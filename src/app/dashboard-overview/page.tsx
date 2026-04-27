@@ -1,40 +1,62 @@
-import React from 'react';
+import { redirect } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
-import MetricsBentoGrid from './components/MetricsBentoGrid';
-import DashboardCharts from './components/DashboardCharts';
-import ActivityFeed from './components/ActivityFeed';
-import TopProjectsPanel from './components/TopProjectsPanel';
+import ActivityFeed from '@/app/dashboard-overview/components/ActivityFeed';
+import DashboardCharts from '@/app/dashboard-overview/components/DashboardCharts';
+import MetricsBentoGrid from '@/app/dashboard-overview/components/MetricsBentoGrid';
+import MyTasksWidget from '@/app/dashboard-overview/components/MyTasksWidget';
+import TopProjectsPanel from '@/app/dashboard-overview/components/TopProjectsPanel';
+import { getAppShellData } from '@/lib/server/app-context';
+import { getDashboardPageData } from '@/lib/server/data';
+import { formatPageDate } from '@/lib/utils';
 
-export default function DashboardOverviewPage() {
+export default async function DashboardOverviewPage() {
+  const shell = await getAppShellData();
+
+  if (!shell) {
+    redirect('/login');
+  }
+
+  const dashboard = await getDashboardPageData();
+
   return (
-    <AppLayout currentPath="/dashboard-overview">
+    <AppLayout
+      currentPath="/dashboard-overview"
+      shell={shell}
+      pageTitle="Dashboard"
+      pageSubtitle={formatPageDate()}
+    >
       <div className="space-y-8">
-        {/* Page header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-foreground">Good morning, Priya 👋</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Here&apos;s what&apos;s happening across your projects today.
+            <h2 className="text-2xl font-semibold text-foreground">
+              Welcome back, {shell.currentUser.fullName.split(' ')[0]}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Here&apos;s the real-time view of work happening across FernFlow today.
             </p>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            Live · Last updated just now
+          <div className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+            Live workspace data
           </div>
         </div>
 
-        <MetricsBentoGrid />
+        <MetricsBentoGrid metrics={dashboard.metrics} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <DashboardCharts />
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="space-y-6 xl:col-span-2">
+            <DashboardCharts
+              tasksByProjectData={dashboard.tasksByProjectData}
+              trendData={dashboard.trendData}
+            />
+            <TopProjectsPanel members={dashboard.members} projects={dashboard.topProjects} />
           </div>
-          <div className="xl:col-span-1">
-            <ActivityFeed />
+
+          <div className="space-y-6 xl:col-span-1">
+            <MyTasksWidget tasks={dashboard.myTasks} />
+            <ActivityFeed activity={dashboard.activity} members={dashboard.members} />
           </div>
         </div>
-
-        <TopProjectsPanel />
       </div>
     </AppLayout>
   );

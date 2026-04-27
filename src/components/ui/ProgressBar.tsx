@@ -29,15 +29,18 @@ export default function ProgressBar({
     pct >= 80
       ? 'bg-emerald-500'
       : pct >= 50
-      ? 'bg-indigo-500'
-      : pct >= 25
-      ? 'bg-amber-500' :'bg-red-500';
+        ? 'bg-indigo-500'
+        : pct >= 25
+          ? 'bg-amber-500'
+          : 'bg-red-500';
 
   const fillColor = colorClass ?? autoColor;
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className={`flex-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${heightClass}`}>
+      <div
+        className={`flex-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${heightClass}`}
+      >
         <div
           className={`${heightClass} ${fillColor} rounded-full transition-all duration-500`}
           style={{ width: `${pct}%` }}

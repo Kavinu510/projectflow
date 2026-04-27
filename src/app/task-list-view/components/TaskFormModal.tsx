@@ -6,10 +6,10 @@ import Modal from '@/components/ui/Modal';
 import {
   type Task,
   type Project,
-  type User,
+  type WorkspaceUserOption,
   type TaskStatus,
   type TaskPriority,
-} from '@/lib/mockData';
+} from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 
 interface TaskFormData {
@@ -28,7 +28,7 @@ interface TaskFormModalProps {
   onSubmit: (data: Partial<Task>) => void;
   initialData?: Task;
   projects: Project[];
-  users: User[];
+  users: WorkspaceUserOption[];
   mode: 'create' | 'edit';
 }
 
@@ -64,7 +64,7 @@ export default function TaskFormModal({
         title: initialData.title,
         description: initialData.description,
         projectId: initialData.projectId,
-        assigneeId: initialData.assigneeId,
+        assigneeId: initialData.assigneeId ?? '',
         status: initialData.status,
         priority: initialData.priority,
         dueDate: initialData.dueDate,
@@ -83,9 +83,7 @@ export default function TaskFormModal({
   }, [open, initialData, reset, projects, users]);
 
   const processSubmit = async (data: TaskFormData) => {
-    // Backend integration point: POST /api/tasks or PATCH /api/tasks/:id
-    await new Promise((r) => setTimeout(r, 500));
-    onSubmit(data);
+    onSubmit({ ...data, assigneeId: data.assigneeId || null });
     reset();
   };
 
@@ -95,7 +93,9 @@ export default function TaskFormModal({
       onClose={onClose}
       title={mode === 'create' ? 'Create New Task' : 'Edit Task'}
       subtitle={
-        mode === 'create' ?'Add a new task and assign it to a team member.' :'Update the task details below.'
+        mode === 'create'
+          ? 'Add a new task and assign it to a team member.'
+          : 'Update the task details below.'
       }
       size="lg"
       footer={
@@ -150,9 +150,7 @@ export default function TaskFormModal({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-1.5">
-            Description
-          </label>
+          <label className="block text-sm font-semibold text-foreground mb-1.5">Description</label>
           <p className="text-xs text-muted-foreground mb-2">
             Provide context on what needs to be done and any acceptance criteria.
           </p>
@@ -200,9 +198,7 @@ export default function TaskFormModal({
               ))}
             </select>
             {errors.assigneeId && (
-              <p className="mt-1.5 text-xs text-red-600 font-medium">
-                {errors.assigneeId.message}
-              </p>
+              <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.assigneeId.message}</p>
             )}
           </div>
         </div>

@@ -1,13 +1,11 @@
 'use client';
 
 import React from 'react';
-import { ACTIVITY_EVENTS, USERS } from '@/lib/mockData';
+import { ArrowRight, CheckCircle2, Eye, PlayCircle, PlusCircle, RefreshCw } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
-import { CheckCircle2, PlayCircle, Eye, PlusCircle, ArrowRight, RefreshCw } from 'lucide-react';
+import { type ActivityLog, type UserProfile } from '@/lib/types';
 
-// Backend integration point: replace with GET /api/activity?limit=8&sort=desc
-
-const ACTION_ICONS: Record<string, React.ReactNode> = {
+const actionIcons: Record<string, React.ReactNode> = {
   moved: <ArrowRight size={13} className="text-indigo-500" />,
   started: <PlayCircle size={13} className="text-blue-500" />,
   'submitted for review': <Eye size={13} className="text-amber-500" />,
@@ -16,73 +14,78 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
   updated: <RefreshCw size={13} className="text-slate-500" />,
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  moved: 'moved to Done',
-  started: 'started working on',
+const actionLabels: Record<string, string> = {
+  moved: 'moved',
+  started: 'started',
   'submitted for review': 'submitted for review',
   'created project': 'created',
   completed: 'completed',
   updated: 'updated',
+  invited: 'invited',
+  deleted: 'deleted',
+  'updated status': 'updated',
+  created: 'created',
 };
 
-export default function ActivityFeed() {
-  const userMap = Object.fromEntries(USERS.map((u) => [u.id, u]));
+export default function ActivityFeed({
+  activity,
+  members,
+}: {
+  activity: ActivityLog[];
+  members: UserProfile[];
+}) {
+  const memberMap = Object.fromEntries(members.map((member) => [member.id, member]));
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-border shadow-card h-full">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+    <div className="h-full rounded-xl border border-border bg-white shadow-card dark:bg-slate-900">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <h3 className="text-base font-semibold text-foreground">Activity Feed</h3>
-        <span className="text-xs text-muted-foreground">Today</span>
+        <span className="text-xs text-muted-foreground">Live workspace history</span>
       </div>
 
       <div className="divide-y divide-border">
-        {ACTIVITY_EVENTS.map((event) => {
-          const user = userMap[event.userId];
-          if (!user) return null;
-          const icon = ACTION_ICONS[event.action] ?? <RefreshCw size={13} className="text-slate-400" />;
-          const label = ACTION_LABELS[event.action] ?? event.action;
+        {activity.map((event) => {
+          const member = event.actorId ? memberMap[event.actorId] : null;
+          const icon = actionIcons[event.action] ?? (
+            <RefreshCw size={13} className="text-slate-400" />
+          );
+          const label = actionLabels[event.action] ?? event.action;
 
           return (
             <div
-              key={`activity-${event.id}`}
-              className="flex gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              key={event.id}
+              className="flex gap-3 px-5 py-3.5 transition hover:bg-slate-50 dark:hover:bg-slate-800/50"
             >
-              {/* Avatar */}
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mt-0.5"
-                style={{ backgroundColor: user.color }}
-                title={user.name}
+                className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                style={{ backgroundColor: member?.color ?? '#64748B' }}
+                title={member?.fullName ?? 'Workspace event'}
               >
-                {user.initials}
+                {member?.initials ?? 'FF'}
               </div>
 
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground leading-snug">
-                  <span className="font-semibold">{user.name.split(' ')[0]}</span>{' '}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm leading-snug text-foreground">
+                  <span className="font-semibold">
+                    {member?.fullName.split(' ')[0] ?? 'FernFlow'}
+                  </span>{' '}
                   <span className="text-muted-foreground">{label}</span>{' '}
-                  <span className="font-medium text-foreground truncate">
-                    &ldquo;{event.target}&rdquo;
+                  <span className="font-medium text-foreground">
+                    &ldquo;{event.targetName}&rdquo;
                   </span>
                 </p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-700">
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
                     {icon}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {formatRelativeTime(event.timestamp)}
+                    {formatRelativeTime(event.createdAt)}
                   </span>
                 </div>
               </div>
             </div>
           );
         })}
-      </div>
-
-      <div className="px-5 py-3 border-t border-border">
-        <button className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-          View all activity →
-        </button>
       </div>
     </div>
   );

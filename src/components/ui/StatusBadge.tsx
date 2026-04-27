@@ -1,5 +1,5 @@
 import React from 'react';
-import type { TaskStatus, ProjectStatus, TaskPriority } from '@/lib/mockData';
+import type { ProjectStatus, TaskPriority, TaskStatus } from '@/lib/types';
 
 type BadgeVariant = TaskStatus | ProjectStatus | TaskPriority;
 

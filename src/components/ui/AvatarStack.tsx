@@ -1,8 +1,10 @@
 import React from 'react';
-import type { User } from '@/lib/mockData';
+import type { UserProfile, WorkspaceUserOption } from '@/lib/types';
+
+type AvatarUser = Pick<UserProfile, 'id' | 'fullName' | 'initials' | 'color'> | WorkspaceUserOption;
 
 interface AvatarStackProps {
-  users: User[];
+  users: AvatarUser[];
   max?: number;
   size?: 'sm' | 'md';
 }
@@ -20,7 +22,7 @@ export default function AvatarStack({ users, max = 4, size = 'sm' }: AvatarStack
           key={`avatar-${user.id}`}
           className={`${sizeClass} ${borderClass} rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0`}
           style={{ backgroundColor: user.color }}
-          title={user.name}
+          title={'name' in user ? user.name : user.fullName}
         >
           {user.initials}
         </div>

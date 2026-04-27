@@ -1,27 +1,39 @@
 'use client';
 
 import React, { useState } from 'react';
-import { type Project, type ProjectStatus, type User } from '@/lib/mockData';
-import StatusBadge from '@/components/ui/StatusBadge';
-import ProgressBar from '@/components/ui/ProgressBar';
+import {
+  Calendar,
+  CheckCircle,
+  FolderKanban,
+  MoreHorizontal,
+  PauseCircle,
+  Pencil,
+  PlayCircle,
+  Trash2,
+} from 'lucide-react';
 import AvatarStack from '@/components/ui/AvatarStack';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import EmptyState from '@/components/ui/EmptyState';
+import ProgressBar from '@/components/ui/ProgressBar';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { formatDate, isOverdue } from '@/lib/utils';
-import { MoreHorizontal, Pencil, Trash2, CheckCircle, PauseCircle, PlayCircle, Calendar, FolderKanban,  } from 'lucide-react';
+import { type Project, type ProjectStatus, type WorkspaceUserOption } from '@/lib/types';
 
 interface ProjectGridProps {
   projects: Project[];
-  onSelect: (p: Project) => void;
+  onSelect: (project: Project) => void;
   selectedId?: string;
-  onEdit: (p: Project) => void;
-  onDelete: (id: string) => void;
-  onStatusChange: (id: string, status: ProjectStatus) => void;
+  onEdit: (project: Project) => void;
+  onDelete: (projectId: string) => void;
+  onStatusChange: (projectId: string, status: ProjectStatus) => void;
   viewMode: 'grid' | 'list';
-  users: User[];
+  users: WorkspaceUserOption[];
 }
 
-const STATUS_TRANSITIONS: Record<ProjectStatus, { label: string; icon: React.ReactNode; value: ProjectStatus }[]> = {
+const statusTransitions: Record<
+  ProjectStatus,
+  Array<{ label: string; icon: React.ReactNode; value: ProjectStatus }>
+> = {
   Active: [
     { label: 'Put On Hold', icon: <PauseCircle size={14} />, value: 'On Hold' },
     { label: 'Mark Completed', icon: <CheckCircle size={14} />, value: 'Completed' },
@@ -30,9 +42,7 @@ const STATUS_TRANSITIONS: Record<ProjectStatus, { label: string; icon: React.Rea
     { label: 'Resume', icon: <PlayCircle size={14} />, value: 'Active' },
     { label: 'Mark Completed', icon: <CheckCircle size={14} />, value: 'Completed' },
   ],
-  Completed: [
-    { label: 'Reactivate', icon: <PlayCircle size={14} />, value: 'Active' },
-  ],
+  Completed: [{ label: 'Reactivate', icon: <PlayCircle size={14} />, value: 'Active' }],
 };
 
 export default function ProjectGrid({
@@ -47,15 +57,14 @@ export default function ProjectGrid({
 }: ProjectGridProps) {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-
-  const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+  const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
 
   if (projects.length === 0) {
     return (
       <EmptyState
         icon={<FolderKanban size={24} />}
         title="No projects found"
-        description="No projects match your current filters. Try adjusting the status filter or search query."
+        description="No projects match your current filters. Try adjusting the filters or create a new project."
       />
     );
   }
@@ -63,75 +72,85 @@ export default function ProjectGrid({
   if (viewMode === 'list') {
     return (
       <>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-border shadow-card overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-white shadow-card dark:bg-slate-900">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Project
                 </th>
-                <th className="hidden sm:table-cell text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">
                   Status
                 </th>
-                <th className="hidden md:table-cell text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">
                   Progress
                 </th>
-                <th className="hidden lg:table-cell text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">
                   Due Date
                 </th>
-                <th className="hidden xl:table-cell text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">
                   Team
                 </th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {projects.map((project) => {
-                const teamUsers = project.teamIds.map((id) => userMap[id]).filter(Boolean) as User[];
+                const teamUsers = project.teamIds
+                  .map((id) => userMap[id])
+                  .filter(Boolean) as WorkspaceUserOption[];
                 const overdue = isOverdue(project.dueDate) && project.status !== 'Completed';
+
                 return (
                   <tr
-                    key={`list-row-${project.id}`}
+                    key={project.id}
                     onClick={() => onSelect(project)}
-                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${
+                    className={`cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
                       selectedId === project.id ? 'bg-indigo-50/50 dark:bg-indigo-950/30' : ''
                     }`}
                   >
                     <td className="px-4 py-3.5">
-                      <p className="font-semibold text-foreground truncate max-w-[200px]">
+                      <p className="max-w-[220px] truncate font-semibold text-foreground">
                         {project.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">
+                      <p className="mt-0.5 max-w-[220px] truncate text-xs text-muted-foreground">
                         {project.taskCount} tasks
                       </p>
                     </td>
-                    <td className="hidden sm:table-cell px-4 py-3.5">
+                    <td className="hidden px-4 py-3.5 sm:table-cell">
                       <StatusBadge variant={project.status} />
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3.5 w-40">
+                    <td className="hidden w-40 px-4 py-3.5 md:table-cell">
                       <ProgressBar value={project.progress} showLabel size="xs" />
                     </td>
-                    <td className={`hidden lg:table-cell px-4 py-3.5 text-sm tabular-nums ${overdue ? 'text-red-600 font-semibold' : 'text-foreground'}`}>
+                    <td
+                      className={`hidden px-4 py-3.5 text-sm lg:table-cell ${
+                        overdue ? 'font-semibold text-red-600' : 'text-foreground'
+                      }`}
+                    >
                       {formatDate(project.dueDate)}
                     </td>
-                    <td className="hidden xl:table-cell px-4 py-3.5">
+                    <td className="hidden px-4 py-3.5 xl:table-cell">
                       <AvatarStack users={teamUsers} max={3} />
                     </td>
-                    <td className="px-4 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-3.5 text-right"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          type="button"
                           onClick={() => onEdit(project)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                          title="Edit project"
+                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setDeleteTarget(project)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete project"
+                          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -143,15 +162,18 @@ export default function ProjectGrid({
             </tbody>
           </table>
         </div>
+
         <ConfirmModal
           open={!!deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => {
-            if (deleteTarget) onDelete(deleteTarget.id);
+            if (deleteTarget) {
+              onDelete(deleteTarget.id);
+            }
             setDeleteTarget(null);
           }}
           title="Delete Project"
-          description={`Are you sure you want to delete "${deleteTarget?.title}"? All associated tasks will also be removed. This cannot be undone.`}
+          description={`Are you sure you want to delete "${deleteTarget?.title}"? All associated tasks will also be removed.`}
           confirmLabel="Delete Project"
         />
       </>
@@ -160,75 +182,82 @@ export default function ProjectGrid({
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {projects.map((project) => {
-          const teamUsers = project.teamIds.map((id) => userMap[id]).filter(Boolean) as User[];
+          const teamUsers = project.teamIds
+            .map((id) => userMap[id])
+            .filter(Boolean) as WorkspaceUserOption[];
           const overdue = isOverdue(project.dueDate) && project.status !== 'Completed';
           const isSelected = selectedId === project.id;
           const menuIsOpen = menuOpen === project.id;
 
           return (
             <div
-              key={`proj-card-${project.id}`}
+              key={project.id}
               onClick={() => onSelect(project)}
-              className={`
-                relative bg-white dark:bg-gray-900 rounded-xl border shadow-card
-                hover:shadow-card-hover transition-all duration-200 cursor-pointer p-5
-                ${isSelected
-                  ? 'border-indigo-400 ring-2 ring-indigo-500/20' :'border-border hover:border-slate-300 dark:hover:border-slate-600'}
-              `}
+              className={`relative cursor-pointer rounded-xl border bg-white p-5 shadow-card transition hover:shadow-card-hover dark:bg-slate-900 ${
+                isSelected
+                  ? 'border-indigo-400 ring-2 ring-indigo-500/20'
+                  : 'border-border hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
             >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0 pr-2">
-                  <h3 className="text-sm font-semibold text-foreground leading-snug truncate">
+              <div className="mb-3 flex items-start justify-between">
+                <div className="min-w-0 flex-1 pr-2">
+                  <h3 className="truncate text-sm font-semibold text-foreground">
                     {project.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                     {project.description}
                   </p>
                 </div>
 
-                {/* Menu */}
-                <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="relative flex-shrink-0"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <button
+                    type="button"
                     onClick={() => setMenuOpen(menuIsOpen ? null : project.id)}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   >
                     <MoreHorizontal size={16} />
                   </button>
+
                   {menuIsOpen && (
-                    <div className="absolute right-0 top-8 z-20 w-48 bg-white dark:bg-gray-800 border border-border rounded-lg shadow-card-hover py-1 scale-in">
+                    <div className="absolute right-0 top-8 z-20 w-48 rounded-lg border border-border bg-white py-1 shadow-card-hover dark:bg-slate-900">
                       <button
+                        type="button"
                         onClick={() => {
                           onEdit(project);
                           setMenuOpen(null);
                         }}
-                        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground transition hover:bg-muted"
                       >
                         <Pencil size={14} className="text-muted-foreground" />
                         Edit Project
                       </button>
-                      {STATUS_TRANSITIONS[project.status]?.map((t) => (
+                      {statusTransitions[project.status].map((transition) => (
                         <button
-                          key={`status-trans-${t.value}`}
+                          type="button"
+                          key={transition.value}
                           onClick={() => {
-                            onStatusChange(project.id, t.value);
+                            onStatusChange(project.id, transition.value);
                             setMenuOpen(null);
                           }}
-                          className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground transition hover:bg-muted"
                         >
-                          <span className="text-muted-foreground">{t.icon}</span>
-                          {t.label}
+                          <span className="text-muted-foreground">{transition.icon}</span>
+                          {transition.label}
                         </button>
                       ))}
                       <hr className="my-1 border-border" />
                       <button
+                        type="button"
                         onClick={() => {
                           setDeleteTarget(project);
                           setMenuOpen(null);
                         }}
-                        className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950"
                       >
                         <Trash2 size={14} />
                         Delete Project
@@ -238,13 +267,12 @@ export default function ProjectGrid({
                 </div>
               </div>
 
-              {/* Tags */}
               {project.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
+                <div className="mb-3 flex flex-wrap gap-1">
                   {project.tags.slice(0, 3).map((tag) => (
                     <span
-                      key={`tag-${project.id}-${tag}`}
-                      className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full"
+                      key={`${project.id}-${tag}`}
+                      className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                     >
                       {tag}
                     </span>
@@ -252,27 +280,22 @@ export default function ProjectGrid({
                 </div>
               )}
 
-              {/* Progress */}
               <div className="mb-4">
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Progress</span>
-                  <span className="text-xs font-semibold text-foreground tabular-nums">
+                  <span className="text-xs font-semibold text-foreground">
                     {project.completedTaskCount}/{project.taskCount} tasks
                   </span>
                 </div>
                 <ProgressBar value={project.progress} showLabel size="sm" />
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <StatusBadge variant={project.status} size="sm" />
-                </div>
-
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <StatusBadge variant={project.status} size="sm" />
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex items-center gap-1 text-xs tabular-nums ${
-                      overdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'
+                    className={`flex items-center gap-1 text-xs ${
+                      overdue ? 'font-semibold text-red-600' : 'text-muted-foreground'
                     }`}
                   >
                     <Calendar size={11} />
@@ -286,23 +309,19 @@ export default function ProjectGrid({
         })}
       </div>
 
-      {/* Click-outside to close menu */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 z-10"
-          onClick={() => setMenuOpen(null)}
-        />
-      )}
+      {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(null)} />}
 
       <ConfirmModal
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
-          if (deleteTarget) onDelete(deleteTarget.id);
+          if (deleteTarget) {
+            onDelete(deleteTarget.id);
+          }
           setDeleteTarget(null);
         }}
         title="Delete Project"
-        description={`Are you sure you want to delete "${deleteTarget?.title}"? All associated tasks will also be removed. This cannot be undone.`}
+        description={`Are you sure you want to delete "${deleteTarget?.title}"? All associated tasks will also be removed.`}
         confirmLabel="Delete Project"
       />
     </>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { type Task, type Project, type User, type TaskStatus } from '@/lib/mockData';
+import { type Task, type Project, type WorkspaceUserOption, type TaskStatus } from '@/lib/types';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { formatDate, isOverdue } from '@/lib/utils';
 import { Pencil, Trash2, GripVertical } from 'lucide-react';
@@ -16,7 +16,7 @@ const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
 interface TaskKanbanProps {
   tasks: Task[];
   projects: Project[];
-  users: User[];
+  users: WorkspaceUserOption[];
   onMove: (taskId: string, newStatus: TaskStatus) => void;
   onEdit: (t: Task) => void;
   onDelete: (id: string) => void;
@@ -77,7 +77,8 @@ export default function TaskKanban({
             onDragLeave={() => setDragOverCol(null)}
             className={`flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[400px] ${
               isOver
-                ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' :'border-border bg-slate-50 dark:bg-slate-800/30'
+                ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30'
+                : 'border-border bg-slate-50 dark:bg-slate-800/30'
             }`}
           >
             {/* Column header */}
@@ -104,7 +105,7 @@ export default function TaskKanban({
               )}
               {colTasks.map((task) => {
                 const project = projectMap[task.projectId];
-                const assignee = userMap[task.assigneeId];
+                const assignee = task.assigneeId ? userMap[task.assigneeId] : null;
                 const overdue = isOverdue(task.dueDate) && task.status !== 'Done';
                 const isDragging = draggingId === task.id;
 

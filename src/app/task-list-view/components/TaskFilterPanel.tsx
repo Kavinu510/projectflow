@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
-import { type Project, type User, type TaskStatus, type TaskPriority } from '@/lib/mockData';
-import { type TaskFilters } from '../page';
+import {
+  type Project,
+  type WorkspaceUserOption,
+  type TaskStatus,
+  type TaskPriority,
+} from '@/lib/types';
+import { type TaskFilters } from './TaskListViewClient';
 import { X } from 'lucide-react';
 
 const ALL_STATUSES: TaskStatus[] = ['To-Do', 'In Progress', 'Review', 'Done'];
@@ -12,7 +17,7 @@ interface TaskFilterPanelProps {
   filters: TaskFilters;
   onChange: (f: TaskFilters) => void;
   projects: Project[];
-  users: User[];
+  users: WorkspaceUserOption[];
   onClose: () => void;
 }
 
@@ -27,10 +32,20 @@ export default function TaskFilterPanel({
     arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
 
   const clearAll = () =>
-    onChange({ search: filters.search, projectIds: [], assigneeIds: [], priorities: [], statuses: [] });
+    onChange({
+      search: filters.search,
+      projectIds: [],
+      assigneeIds: [],
+      priorities: [],
+      statuses: [],
+    });
 
   const hasActive =
-    filters.projectIds.length + filters.assigneeIds.length + filters.priorities.length + filters.statuses.length > 0;
+    filters.projectIds.length +
+      filters.assigneeIds.length +
+      filters.priorities.length +
+      filters.statuses.length >
+    0;
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-border rounded-xl shadow-card p-5 slide-up">
@@ -67,7 +82,8 @@ export default function TaskFilterPanel({
                 onClick={() => onChange({ ...filters, statuses: toggle(filters.statuses, s) })}
                 className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-all ${
                   filters.statuses.includes(s)
-                    ? 'bg-indigo-600 text-white border-indigo-600' :'bg-white dark:bg-gray-800 text-foreground border-border hover:border-indigo-400'
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white dark:bg-gray-800 text-foreground border-border hover:border-indigo-400'
                 }`}
               >
                 {s}
@@ -88,7 +104,8 @@ export default function TaskFilterPanel({
                 onClick={() => onChange({ ...filters, priorities: toggle(filters.priorities, p) })}
                 className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-all ${
                   filters.priorities.includes(p)
-                    ? 'bg-indigo-600 text-white border-indigo-600' :'bg-white dark:bg-gray-800 text-foreground border-border hover:border-indigo-400'
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white dark:bg-gray-800 text-foreground border-border hover:border-indigo-400'
                 }`}
               >
                 {p}

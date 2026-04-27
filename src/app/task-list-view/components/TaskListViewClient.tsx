@@ -1,0 +1,350 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  type Task,
+  type Project,
+  type WorkspaceUserOption,
+  type TaskStatus,
+  type TaskPriority,
+} from '@/lib/types';
+import TaskTable from './TaskTable';
+import TaskKanban from './TaskKanban';
+import TaskFormModal from './TaskFormModal';
+import TaskFilterPanel from './TaskFilterPanel';
+import { Plus, List, Columns, SlidersHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
+
+export type ViewMode = 'list' | 'kanban';
+
+export interface TaskFilters {
+  search: string;
+  projectIds: string[];
+  assigneeIds: string[];
+  priorities: TaskPriority[];
+  statuses: TaskStatus[];
+}
+
+interface TaskListViewClientProps {
+  initialTasks: Task[];
+  projects: Project[];
+  users: WorkspaceUserOption[];
+}
+
+export default function TaskListViewClient({
+  initialTasks,
+  projects,
+  users,
+}: TaskListViewClientProps) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [filters, setFilters] = useState<TaskFilters>({
+    search: '',
+    projectIds: [],
+    assigneeIds: [],
+    priorities: [],
+    statuses: [],
+  });
+
+  const filteredTasks = useMemo(() => {
+    let result = tasks;
+
+    if (filters.search.trim()) {
+      const q = filters.search.toLowerCase();
+      result = result.filter(
+        (t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+      );
+    }
+    if (filters.projectIds.length > 0) {
+      result = result.filter((t) => filters.projectIds.includes(t.projectId));
+    }
+    if (filters.assigneeIds.length > 0) {
+      result = result.filter((t) => t.assigneeId && filters.assigneeIds.includes(t.assigneeId));
+    }
+    if (filters.priorities.length > 0) {
+      result = result.filter((t) => filters.priorities.includes(t.priority));
+    }
+    if (filters.statuses.length > 0) {
+      result = result.filter((t) => filters.statuses.includes(t.status));
+    }
+
+    return result;
+  }, [tasks, filters]);
+
+  const activeFilterCount =
+    filters.projectIds.length +
+    filters.assigneeIds.length +
+    filters.priorities.length +
+    filters.statuses.length;
+
+  const handleCreateTask = async (data: Partial<Task>) => {
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error('Failed to create task');
+
+      // Refresh tasks
+      const freshRes = await fetch('/api/tasks');
+      if (freshRes.ok) {
+        const freshData = (await freshRes.json()) as { tasks?: Task[] };
+        setTasks(Array.isArray(freshData.tasks) ? freshData.tasks : []);
+      }
+
+      setFormOpen(false);
+      toast.success(`Task created`);
+    } catch (_error) {
+      toast.error('Could not create task');
+    }
+  };
+
+  const handleEditTask = async (data: Partial<Task>) => {
+    if (!editingTask) return;
+    try {
+      const res = await fetch(`/api/tasks/${editingTask.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error('Failed to update task');
+
+      setTasks((prev) => prev.map((t) => (t.id === editingTask.id ? { ...t, ...data } : t)));
+      setEditingTask(null);
+      setFormOpen(false);
+      toast.success('Task updated');
+    } catch (_error) {
+      toast.error('Could not update task');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete task');
+
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+      toast.success(`Task deleted`);
+    } catch (_error) {
+      toast.error('Could not delete task');
+    }
+  };
+
+  const handleStatusChange = async (taskId: string, status: TaskStatus) => {
+    const prevTasks = [...tasks];
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+      toast.success('Task status updated');
+    } catch (_error) {
+      setTasks(prevTasks);
+      toast.error('Could not update status');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    const ids = Array.from(selectedIds);
+
+    try {
+      await Promise.all(ids.map((id) => fetch(`/api/tasks/${id}`, { method: 'DELETE' })));
+      setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} task${count > 1 ? 's' : ''} deleted`);
+    } catch (_error) {
+      toast.error('Some tasks could not be deleted');
+    }
+  };
+
+  const handleBulkStatusChange = async (status: TaskStatus) => {
+    const count = selectedIds.size;
+    const ids = Array.from(selectedIds);
+    const prevTasks = [...tasks];
+
+    setTasks((prev) => prev.map((t) => (selectedIds.has(t.id) ? { ...t, status } : t)));
+    setSelectedIds(new Set());
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/tasks/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          })
+        )
+      );
+      toast.success(`${count} task${count > 1 ? 's' : ''} moved to ${status}`);
+    } catch (_error) {
+      setTasks(prevTasks);
+      toast.error('Some tasks could not be updated');
+    }
+  };
+
+  const handleKanbanMove = async (taskId: string, newStatus: TaskStatus) => {
+    const prevTasks = [...tasks];
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update status');
+    } catch (_error) {
+      setTasks(prevTasks);
+      toast.error('Could not update status');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-foreground">All Tasks</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {filteredTasks.length} of {tasks.length} tasks
+            {activeFilterCount > 0 && (
+              <span className="ml-1.5 text-indigo-600 font-medium">
+                · {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFilterPanelOpen((p) => !p)}
+            className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all ${
+              filterPanelOpen || activeFilterCount > 0
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800'
+                : 'bg-white dark:bg-gray-900 text-foreground border-border hover:bg-muted'
+            }`}
+          >
+            <SlidersHorizontal size={15} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-indigo-600 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center tabular-nums">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-gray-900 text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="List view"
+            >
+              <List size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-white dark:bg-gray-900 text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label="Kanban view"
+            >
+              <Columns size={16} />
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setFormOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-semibold rounded-lg transition-all shadow-sm"
+          >
+            <Plus size={15} />
+            New Task
+          </button>
+        </div>
+      </div>
+
+      {/* Filter panel */}
+      {filterPanelOpen && (
+        <TaskFilterPanel
+          filters={filters}
+          onChange={setFilters}
+          projects={projects}
+          users={users}
+          onClose={() => setFilterPanelOpen(false)}
+        />
+      )}
+
+      {/* Content */}
+      {viewMode === 'list' ? (
+        <TaskTable
+          tasks={filteredTasks}
+          projects={projects}
+          users={users}
+          selectedIds={selectedIds}
+          onSelectChange={setSelectedIds}
+          onEdit={(t) => {
+            setEditingTask(t);
+            setFormOpen(true);
+          }}
+          onDelete={handleDeleteTask}
+          onStatusChange={handleStatusChange}
+          onBulkDelete={handleBulkDelete}
+          onBulkStatusChange={handleBulkStatusChange}
+          filters={filters}
+          onSearchChange={(s) => setFilters((f) => ({ ...f, search: s }))}
+        />
+      ) : (
+        <TaskKanban
+          tasks={filteredTasks}
+          projects={projects}
+          users={users}
+          onMove={handleKanbanMove}
+          onEdit={(t) => {
+            setEditingTask(t);
+            setFormOpen(true);
+          }}
+          onDelete={handleDeleteTask}
+        />
+      )}
+
+      <TaskFormModal
+        open={formOpen}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingTask(null);
+        }}
+        onSubmit={editingTask ? handleEditTask : handleCreateTask}
+        initialData={editingTask ?? undefined}
+        projects={projects}
+        users={users}
+        mode={editingTask ? 'edit' : 'create'}
+      />
+    </div>
+  );
+}

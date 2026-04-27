@@ -1,26 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { type Project, type Task, type User } from '@/lib/mockData';
-import StatusBadge from '@/components/ui/StatusBadge';
-import ProgressBar from '@/components/ui/ProgressBar';
+import { Calendar, CheckSquare, Clock, Pencil, Tag, Trash2, Users, X } from 'lucide-react';
 import AvatarStack from '@/components/ui/AvatarStack';
+import ProgressBar from '@/components/ui/ProgressBar';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { formatDate, isOverdue } from '@/lib/utils';
-import {
-  X,
-  Pencil,
-  Trash2,
-  Calendar,
-  Users,
-  CheckSquare,
-  Tag,
-  Clock,
-} from 'lucide-react';
+import { type Project, type Task, type WorkspaceUserOption } from '@/lib/types';
 
 interface ProjectDetailPanelProps {
   project: Project;
   tasks: Task[];
-  users: User[];
+  users: WorkspaceUserOption[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -35,160 +26,123 @@ export default function ProjectDetailPanel({
   onDelete,
 }: ProjectDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks'>('overview');
-  const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
-  const teamUsers = project.teamIds.map((id) => userMap[id]).filter(Boolean) as User[];
+  const userMap = Object.fromEntries(users.map((user) => [user.id, user]));
+  const teamUsers = project.teamIds
+    .map((id) => userMap[id])
+    .filter(Boolean) as WorkspaceUserOption[];
 
   const tasksByStatus = {
-    'To-Do': tasks.filter((t) => t.status === 'To-Do'),
-    'In Progress': tasks.filter((t) => t.status === 'In Progress'),
-    Review: tasks.filter((t) => t.status === 'Review'),
-    Done: tasks.filter((t) => t.status === 'Done'),
+    'To-Do': tasks.filter((task) => task.status === 'To-Do'),
+    'In Progress': tasks.filter((task) => task.status === 'In Progress'),
+    Review: tasks.filter((task) => task.status === 'Review'),
+    Done: tasks.filter((task) => task.status === 'Done'),
   };
 
-  const TABS = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'tasks', label: `Tasks (${tasks.length})` },
-  ] as const;
-
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-border shadow-card-hover h-full slide-up">
-      {/* Panel header */}
-      <div className="flex items-start justify-between p-5 border-b border-border">
-        <div className="flex-1 min-w-0 pr-3">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h3 className="text-base font-semibold text-foreground leading-snug">
-              {project.title}
-            </h3>
+    <div className="h-full rounded-xl border border-border bg-white shadow-card-hover dark:bg-slate-900">
+      <div className="flex items-start justify-between border-b border-border p-5">
+        <div className="min-w-0 flex-1 pr-3">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-semibold text-foreground">{project.title}</h3>
             <StatusBadge variant={project.status} />
           </div>
-          <p className="text-xs font-mono text-muted-foreground">{project.id}</p>
+          <p className="font-mono text-xs text-muted-foreground">{project.id}</p>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={onEdit}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="Edit project"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <Pencil size={15} />
           </button>
           <button
+            type="button"
             onClick={onDelete}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
-            title="Delete project — this cannot be undone"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
           >
             <Trash2 size={15} />
           </button>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ml-1"
+            className="ml-1 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <X size={15} />
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex border-b border-border px-5">
-        {TABS.map((tab) => (
+        {(['overview', 'tasks'] as const).map((tab) => (
           <button
-            key={`detail-tab-${tab.id}`}
-            onClick={() => setActiveTab(tab.id)}
-            className={`py-3 px-1 mr-5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-indigo-600 text-indigo-600' :'border-transparent text-muted-foreground hover:text-foreground'
+            type="button"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`mr-5 border-b-2 px-1 py-3 text-sm font-medium transition ${
+              activeTab === tab
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab.label}
+            {tab === 'overview' ? 'Overview' : `Tasks (${tasks.length})`}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="p-5 overflow-y-auto scrollbar-thin max-h-[calc(100vh-280px)]">
-        {activeTab === 'overview' && (
+      <div className="scrollbar-thin max-h-[calc(100vh-280px)] overflow-y-auto p-5">
+        {activeTab === 'overview' ? (
           <div className="space-y-5">
-            {/* Description */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Description
               </p>
-              <p className="text-sm text-foreground leading-relaxed">{project.description}</p>
+              <p className="text-sm leading-relaxed text-foreground">{project.description}</p>
             </div>
 
-            {/* Progress */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                   Progress
                 </p>
-                <span className="text-sm font-bold text-foreground tabular-nums">
-                  {project.progress}%
-                </span>
+                <span className="text-sm font-bold text-foreground">{project.progress}%</span>
               </div>
               <ProgressBar value={project.progress} size="md" showLabel={false} />
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="mt-2 text-xs text-muted-foreground">
                 {project.completedTaskCount} of {project.taskCount} tasks completed
               </p>
             </div>
 
-            {/* Meta grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Calendar size={13} className="text-muted-foreground" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Due Date
-                  </p>
-                </div>
+              <InfoCard icon={<Calendar size={13} />} label="Due Date">
                 <p
-                  className={`text-sm font-semibold tabular-nums ${
+                  className={`text-sm font-semibold ${
                     isOverdue(project.dueDate) && project.status !== 'Completed'
-                      ? 'text-red-600' :'text-foreground'
+                      ? 'text-red-600'
+                      : 'text-foreground'
                   }`}
                 >
                   {formatDate(project.dueDate)}
                 </p>
-              </div>
-
-              <div className="bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Clock size={13} className="text-muted-foreground" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Created
-                  </p>
-                </div>
-                <p className="text-sm font-semibold text-foreground tabular-nums">
-                  {formatDate(project.createdDate)}
+              </InfoCard>
+              <InfoCard icon={<Clock size={13} />} label="Created">
+                <p className="text-sm font-semibold text-foreground">
+                  {formatDate(project.createdAt)}
                 </p>
-              </div>
-
-              <div className="bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <CheckSquare size={13} className="text-muted-foreground" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Tasks
-                  </p>
-                </div>
-                <p className="text-sm font-semibold text-foreground tabular-nums">
+              </InfoCard>
+              <InfoCard icon={<CheckSquare size={13} />} label="Tasks">
+                <p className="text-sm font-semibold text-foreground">
                   {project.completedTaskCount}/{project.taskCount}
                 </p>
-              </div>
-
-              <div className="bg-muted rounded-lg p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Users size={13} className="text-muted-foreground" />
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Team
-                  </p>
-                </div>
+              </InfoCard>
+              <InfoCard icon={<Users size={13} />} label="Team">
                 <AvatarStack users={teamUsers} max={4} size="sm" />
-              </div>
+              </InfoCard>
             </div>
 
-            {/* Tags */}
             {project.tags.length > 0 && (
               <div>
-                <div className="flex items-center gap-1.5mb-2">
+                <div className="mb-2 flex items-center gap-1.5">
                   <Tag size={13} className="text-muted-foreground" />
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     Tags
@@ -197,8 +151,8 @@ export default function ProjectDetailPanel({
                 <div className="flex flex-wrap gap-1.5">
                   {project.tags.map((tag) => (
                     <span
-                      key={`detail-tag-${project.id}-${tag}`}
-                      className="text-xs px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-full font-medium"
+                      key={`${project.id}-${tag}`}
+                      className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
                     >
                       {tag}
                     </span>
@@ -207,16 +161,15 @@ export default function ProjectDetailPanel({
               </div>
             )}
 
-            {/* Team members */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Team Members
               </p>
               <div className="space-y-2">
                 {teamUsers.map((user) => (
-                  <div key={`detail-team-${user.id}`} className="flex items-center gap-3">
+                  <div key={user.id} className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white"
                       style={{ backgroundColor: user.color }}
                     >
                       {user.initials}
@@ -230,41 +183,40 @@ export default function ProjectDetailPanel({
               </div>
             </div>
           </div>
-        )}
-
-        {activeTab === 'tasks' && (
+        ) : (
           <div className="space-y-4">
             {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
-              <div key={`task-group-${status}`}>
-                <div className="flex items-center gap-2 mb-2">
+              <div key={status}>
+                <div className="mb-2 flex items-center gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     {status}
                   </p>
-                  <span className="text-xs font-semibold tabular-nums bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
                     {statusTasks.length}
                   </span>
                 </div>
                 {statusTasks.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic pl-1">No tasks</p>
+                  <p className="pl-1 text-xs italic text-muted-foreground">No tasks</p>
                 ) : (
                   <div className="space-y-1.5">
                     {statusTasks.map((task) => {
-                      const assignee = userMap[task.assigneeId];
+                      const assignee = task.assigneeId ? userMap[task.assigneeId] : null;
                       const overdue = isOverdue(task.dueDate) && task.status !== 'Done';
+
                       return (
                         <div
-                          key={`panel-task-${task.id}`}
-                          className="flex items-start gap-3 p-3 bg-muted rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          key={task.id}
+                          className="flex items-start gap-3 rounded-lg bg-muted p-3 transition hover:bg-slate-100 dark:hover:bg-slate-700"
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground leading-snug truncate">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
                               {task.title}
                             </p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
                               <StatusBadge variant={task.priority} size="sm" showDot={false} />
                               <span
-                                className={`text-xs tabular-nums ${
-                                  overdue ? 'text-red-600 font-semibold' : 'text-muted-foreground'
+                                className={`text-xs ${
+                                  overdue ? 'font-semibold text-red-600' : 'text-muted-foreground'
                                 }`}
                               >
                                 {formatDate(task.dueDate)}
@@ -273,7 +225,7 @@ export default function ProjectDetailPanel({
                           </div>
                           {assignee && (
                             <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mt-0.5"
+                              className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold text-white"
                               style={{ backgroundColor: assignee.color }}
                               title={assignee.name}
                             >
@@ -290,6 +242,28 @@ export default function ProjectDetailPanel({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function InfoCard({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg bg-muted p-3">
+      <div className="mb-1 flex items-center gap-1.5">
+        <span className="text-muted-foreground">{icon}</span>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </p>
+      </div>
+      {children}
     </div>
   );
 }

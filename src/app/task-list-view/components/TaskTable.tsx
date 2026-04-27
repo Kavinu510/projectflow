@@ -4,15 +4,15 @@ import React, { useState } from 'react';
 import {
   type Task,
   type Project,
-  type User,
+  type WorkspaceUserOption,
   type TaskStatus,
   type TaskPriority,
-} from '@/lib/mockData';
+} from '@/lib/types';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDate, isOverdue } from '@/lib/utils';
-import { type TaskFilters } from '../page';
+import { type TaskFilters } from './TaskListViewClient';
 import {
   Search,
   ArrowUp,
@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 
-type SortField = 'title' | 'dueDate' | 'priority' | 'status' | 'createdDate';
+type SortField = 'title' | 'dueDate' | 'priority' | 'status' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = { High: 0, Medium: 1, Low: 2 };
@@ -43,7 +43,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 interface TaskTableProps {
   tasks: Task[];
   projects: Project[];
-  users: User[];
+  users: WorkspaceUserOption[];
   selectedIds: Set<string>;
   onSelectChange: (ids: Set<string>) => void;
   onEdit: (t: Task) => void;
@@ -86,10 +86,9 @@ export default function TaskTable({
       cmp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     else if (sortField === 'priority')
       cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    else if (sortField === 'status')
-      cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-    else if (sortField === 'createdDate')
-      cmp = new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime();
+    else if (sortField === 'status') cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    else if (sortField === 'createdAt')
+      cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
@@ -122,7 +121,8 @@ export default function TaskTable({
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ChevronsUpDown size={13} className="text-muted-foreground/50" />;
+    if (sortField !== field)
+      return <ChevronsUpDown size={13} className="text-muted-foreground/50" />;
     return sortDir === 'asc' ? (
       <ArrowUp size={13} className="text-indigo-600" />
     ) : (
@@ -241,11 +241,11 @@ export default function TaskTable({
                 </th>
                 <th className="text-left px-4 py-3 hidden xl:table-cell">
                   <button
-                    onClick={() => handleSort('createdDate')}
+                    onClick={() => handleSort('createdAt')}
                     className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Created
-                    <SortIcon field="createdDate" />
+                    <SortIcon field="createdAt" />
                   </button>
                 </th>
                 <th className="text-right px-4 py-3">
@@ -258,7 +258,7 @@ export default function TaskTable({
             <tbody className="divide-y divide-border">
               {paginated.map((task) => {
                 const project = projectMap[task.projectId];
-                const assignee = userMap[task.assigneeId];
+                const assignee = task.assigneeId ? userMap[task.assigneeId] : null;
                 const overdue = isOverdue(task.dueDate) && task.status !== 'Done';
                 const isSelected = selectedIds.has(task.id);
                 const statusMenuOpen = statusMenuTask === task.id;
@@ -324,9 +324,7 @@ export default function TaskTable({
                     <td className="px-4 py-3.5">
                       <div className="relative">
                         <button
-                          onClick={() =>
-                            setStatusMenuTask(statusMenuOpen ? null : task.id)
-                          }
+                          onClick={() => setStatusMenuTask(statusMenuOpen ? null : task.id)}
                           className="cursor-pointer hover:opacity-80 transition-opacity"
                         >
                           <StatusBadge variant={task.status} size="sm" />
@@ -349,9 +347,13 @@ export default function TaskTable({
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                                    s === 'Done' ?'bg-emerald-500'
-                                      : s === 'In Progress' ?'bg-blue-500'
-                                      : s === 'Review' ?'bg-amber-500' :'bg-slate-400'
+                                    s === 'Done'
+                                      ? 'bg-emerald-500'
+                                      : s === 'In Progress'
+                                        ? 'bg-blue-500'
+                                        : s === 'Review'
+                                          ? 'bg-amber-500'
+                                          : 'bg-slate-400'
                                   }`}
                                 />
                                 {s}
@@ -384,7 +386,7 @@ export default function TaskTable({
                     {/* Created date */}
                     <td className="px-4 py-3.5 hidden xl:table-cell">
                       <span className="text-sm text-muted-foreground tabular-nums">
-                        {formatDate(task.createdDate)}
+                        {formatDate(task.createdAt)}
                       </span>
                     </td>
 
@@ -452,7 +454,8 @@ export default function TaskTable({
                 onClick={() => setPage(n)}
                 className={`w-7 h-7 text-xs font-medium rounded-md transition-colors tabular-nums ${
                   page === n
-                    ? 'bg-indigo-600 text-white' :'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 {n}
@@ -473,9 +476,7 @@ export default function TaskTable({
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 slide-up">
           <div className="flex items-center gap-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl px-5 py-3 shadow-modal">
-            <span className="text-sm font-semibold tabular-nums">
-              {selectedIds.size} selected
-            </span>
+            <span className="text-sm font-semibold tabular-nums">{selectedIds.size} selected</span>
             <div className="w-px h-5 bg-gray-700 dark:bg-gray-300" />
             {STATUS_OPTIONS.map((s) => (
               <button
