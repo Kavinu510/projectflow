@@ -127,14 +127,29 @@ export default function ProjectManagementClient({
       return;
     }
 
-    await submitProject({
+    const payload = {
       title: currentProject.title,
       description: currentProject.description,
       dueDate: currentProject.dueDate,
       tags: currentProject.tags,
       teamIds: currentProject.teamIds,
       status,
+    };
+
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const error = (await response.json()) as { error?: string };
+      toast.error(error.error ?? 'Unable to update project status.');
+      return;
+    }
+
+    await refreshData();
+    toast.success('Project status updated');
   };
 
   return (

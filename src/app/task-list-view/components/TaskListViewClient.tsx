@@ -144,6 +144,9 @@ export default function TaskListViewClient({
   };
 
   const handleStatusChange = async (taskId: string, status: TaskStatus) => {
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
     const prevTasks = [...tasks];
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
 
@@ -151,7 +154,15 @@ export default function TaskListViewClient({
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          title: currentTask.title,
+          description: currentTask.description,
+          projectId: currentTask.projectId,
+          assigneeId: currentTask.assigneeId,
+          priority: currentTask.priority,
+          dueDate: currentTask.dueDate,
+          status,
+        }),
       });
       if (!res.ok) throw new Error('Failed to update status');
       toast.success('Task status updated');
@@ -185,13 +196,23 @@ export default function TaskListViewClient({
 
     try {
       await Promise.all(
-        ids.map((id) =>
-          fetch(`/api/tasks/${id}`, {
+        ids.map((id) => {
+          const currentTask = prevTasks.find((t) => t.id === id);
+          if (!currentTask) return Promise.resolve();
+          return fetch(`/api/tasks/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status }),
-          })
-        )
+            body: JSON.stringify({
+              title: currentTask.title,
+              description: currentTask.description,
+              projectId: currentTask.projectId,
+              assigneeId: currentTask.assigneeId,
+              priority: currentTask.priority,
+              dueDate: currentTask.dueDate,
+              status,
+            }),
+          });
+        })
       );
       toast.success(`${count} task${count > 1 ? 's' : ''} moved to ${status}`);
     } catch (_error) {
@@ -201,6 +222,9 @@ export default function TaskListViewClient({
   };
 
   const handleKanbanMove = async (taskId: string, newStatus: TaskStatus) => {
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+
     const prevTasks = [...tasks];
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
 
@@ -208,7 +232,15 @@ export default function TaskListViewClient({
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          title: currentTask.title,
+          description: currentTask.description,
+          projectId: currentTask.projectId,
+          assigneeId: currentTask.assigneeId,
+          priority: currentTask.priority,
+          dueDate: currentTask.dueDate,
+          status: newStatus,
+        }),
       });
       if (!res.ok) throw new Error('Failed to update status');
     } catch (_error) {
