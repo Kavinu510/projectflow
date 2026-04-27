@@ -1061,10 +1061,10 @@ export async function inviteTeamMemberRecord(input: TeamInviteInput) {
       theme: 'system',
       email_notifications: true,
       in_app_notifications: true,
-        daily_digest: true,
-      },
-      { onConflict: 'user_id,workspace_id' }
-    );
+      daily_digest: true,
+    },
+    { onConflict: 'user_id,workspace_id' }
+  );
 
   await createActivityLog(context, {
     action: 'invited',
