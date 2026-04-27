@@ -1,5 +1,7 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
+
+export const dynamic = 'force-dynamic';
 import { Toaster } from 'sonner';
 import '../styles/tailwind.css';
 
