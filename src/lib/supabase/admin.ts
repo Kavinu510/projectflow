@@ -1,9 +1,9 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getServerEnv } from '@/lib/env';
 
-let adminClient: SupabaseClient<any, 'public', any> | null = null;
+let adminClient: SupabaseClient | null = null;
 
-export function createSupabaseAdminClient(): SupabaseClient<any, 'public', any> {
+export function createSupabaseAdminClient(): SupabaseClient {
   if (adminClient) {
     return adminClient;
   }
@@ -14,16 +14,12 @@ export function createSupabaseAdminClient(): SupabaseClient<any, 'public', any> 
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for FernFlow server operations.');
   }
 
-  adminClient = createClient<any, any, any>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  adminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   return adminClient;
 }

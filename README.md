@@ -40,3 +40,24 @@ FernFlow is a project and task management tool, built with Next.js App Router an
 npm run build
 npm start
 ```
+
+## CI/CD Commands
+
+These commands back the new GitHub Actions workflows:
+
+```bash
+npm run ci:validate
+npm run test:unit
+npm run test:e2e
+npm run smoke:http
+```
+
+For Supabase migration validation, start the local database first:
+
+```bash
+npm run db:start
+npm run db:validate
+```
+
+The full pipeline setup guide, required secrets, and Netlify/Supabase handoff steps live in
+`docs/ci-cd-runbook.md`.

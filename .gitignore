@@ -20,6 +20,7 @@ Thumbs.db
 
 # Vercel deployment
 .vercel/
+.netlify/
 
 # Optional: if using TypeScript
 *.tsbuildinfo
@@ -27,6 +28,8 @@ Thumbs.db
 # Optional: if using testing tools
 coverage/
 jest-test-results.json
+playwright-report/
+test-results/
 
 # Optional: if using IDEs
 .vscode/
@@ -38,3 +41,8 @@ turbo/
 # Environment files
 .env*
 !.env.example
+
+# Graphify generated output
+graphify-out/
+.graphify_*
+supabase/.temp/

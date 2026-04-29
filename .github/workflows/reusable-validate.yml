@@ -1,0 +1,108 @@
+name: Reusable Validate
+
+on:
+  workflow_call:
+    inputs:
+      git_ref:
+        description: 'Git ref or SHA to validate'
+        required: false
+        type: string
+      run_database_validation:
+        description: 'Run local Supabase migration validation'
+        required: false
+        default: true
+        type: boolean
+      node_version:
+        description: 'Node.js version'
+        required: false
+        default: '20'
+        type: string
+    secrets:
+      NEXT_PUBLIC_SUPABASE_URL:
+        required: true
+      NEXT_PUBLIC_SUPABASE_ANON_KEY:
+        required: true
+      SUPABASE_SERVICE_ROLE_KEY:
+        required: true
+      FERNFLOW_WORKSPACE_SLUG:
+        required: true
+      FERNFLOW_WORKSPACE_NAME:
+        required: true
+      NEXT_PUBLIC_SITE_URL:
+        required: false
+      FERNFLOW_OWNER_EMAIL:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  app-quality:
+    name: App Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FERNFLOW_WORKSPACE_SLUG: ${{ secrets.FERNFLOW_WORKSPACE_SLUG }}
+      FERNFLOW_WORKSPACE_NAME: ${{ secrets.FERNFLOW_WORKSPACE_NAME }}
+      FERNFLOW_OWNER_EMAIL: ${{ secrets.FERNFLOW_OWNER_EMAIL }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Production build
+        run: npm run build:ci
+
+  database-validation:
+    name: Supabase Migration Validation
+    if: ${{ inputs.run_database_validation }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.95.6
+
+      - name: Start local Supabase database
+        run: supabase db start
+
+      - name: Validate migrations
+        run: npm run db:validate
+
+      - name: Stop local Supabase services
+        if: always()
+        run: supabase stop --no-backup
