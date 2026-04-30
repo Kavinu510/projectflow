@@ -671,11 +671,13 @@ export async function getProfilePageData(): Promise<ProfilePageData> {
 
 export async function getSettingsPageData(): Promise<SettingsPageData> {
   const context = await requireAppContext();
-  assertAdmin(context);
 
   return {
+    profile: context.profile,
+    userSettings: context.userSettings,
     workspace: context.workspace,
     workspaceSettings: context.workspaceSettings,
+    isAdmin: context.isAdmin,
   };
 }
 

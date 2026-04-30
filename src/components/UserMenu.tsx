@@ -7,11 +7,10 @@ import { type AppShellUser } from '@/lib/types';
 
 interface UserMenuProps {
   currentUser: AppShellUser;
-  isAdmin: boolean;
   compact?: boolean;
 }
 
-export default function UserMenu({ currentUser, isAdmin, compact = false }: UserMenuProps) {
+export default function UserMenu({ currentUser, compact = false }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -64,9 +63,7 @@ export default function UserMenu({ currentUser, isAdmin, compact = false }: User
           <div className="py-2">
             <MenuLink href="/profile" icon={<UserCircle2 size={15} />} label="My Profile" />
             <MenuLink href="/notifications" icon={<Bell size={15} />} label="Notifications" />
-            {isAdmin && (
-              <MenuLink href="/settings" icon={<Settings size={15} />} label="Workspace Settings" />
-            )}
+            <MenuLink href="/settings" icon={<Settings size={15} />} label="Settings" />
           </div>
 
           <form action="/auth/signout" method="post" className="border-t border-border pt-2">

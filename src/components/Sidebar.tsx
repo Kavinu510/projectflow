@@ -21,7 +21,6 @@ interface SidebarProps {
   mobileOpen: boolean;
   currentPath: string;
   currentUser: AppShellUser;
-  isAdmin: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
 }
@@ -42,7 +41,6 @@ export default function Sidebar({
   mobileOpen,
   currentPath,
   currentUser,
-  isAdmin,
   onToggleCollapse,
   onCloseMobile,
 }: SidebarProps) {
@@ -111,28 +109,26 @@ export default function Sidebar({
                 Manage
               </p>
             )}
-            {bottomNavItems
-              .filter((item) => (item.href === '/settings' ? isAdmin : true))
-              .map((item) => (
-                <NavLink
-                  key={item.href}
-                  currentPath={currentPath}
-                  collapsed={collapsed}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                />
-              ))}
+            {bottomNavItems.map((item) => (
+              <NavLink
+                key={item.href}
+                currentPath={currentPath}
+                collapsed={collapsed}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+              />
+            ))}
           </div>
         </nav>
 
         <div className="border-t border-border px-3 py-4">
           {collapsed ? (
             <div className="flex justify-center">
-              <UserMenu compact currentUser={currentUser} isAdmin={isAdmin} />
+              <UserMenu compact currentUser={currentUser} />
             </div>
           ) : (
-            <UserMenu currentUser={currentUser} isAdmin={isAdmin} />
+            <UserMenu currentUser={currentUser} />
           )}
         </div>
       </aside>
@@ -181,24 +177,22 @@ export default function Sidebar({
             <p className="px-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
               Manage
             </p>
-            {bottomNavItems
-              .filter((item) => (item.href === '/settings' ? isAdmin : true))
-              .map((item) => (
-                <NavLink
-                  key={item.href}
-                  currentPath={currentPath}
-                  collapsed={false}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  onClick={onCloseMobile}
-                />
-              ))}
+            {bottomNavItems.map((item) => (
+              <NavLink
+                key={item.href}
+                currentPath={currentPath}
+                collapsed={false}
+                href={item.href}
+                icon={item.icon}
+                label={item.label}
+                onClick={onCloseMobile}
+              />
+            ))}
           </div>
         </nav>
 
         <div className="border-t border-border px-3 py-4">
-          <UserMenu currentUser={currentUser} isAdmin={isAdmin} />
+          <UserMenu currentUser={currentUser} />
         </div>
       </aside>
     </>
