@@ -12,6 +12,10 @@ const GROUPS = {
   supabase: ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_ID', 'SUPABASE_DB_PASSWORD'],
 };
 
+function hasValue(value) {
+  return typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
+}
+
 const groups = process.argv.slice(2);
 
 if (groups.length === 0) {
@@ -32,7 +36,7 @@ for (const group of groups) {
   }
 
   for (const key of keys) {
-    if (!process.env[key]) {
+    if (!hasValue(process.env[key])) {
       missing.add(key);
     }
   }
