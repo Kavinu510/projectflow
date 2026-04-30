@@ -1,0 +1,2 @@
+-- FernFlow keeps seed data intentionally light because the application bootstraps
+-- workspaces, profiles, and membership records on first authenticated access.

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 import { hasSupabaseEnv } from '@/lib/env';
 
-export function updateSupabaseSession(request: NextRequest) {
+export async function updateSupabaseSession(request: NextRequest) {
   if (!hasSupabaseEnv()) {
     return NextResponse.next({ request });
   }
@@ -28,7 +28,7 @@ export function updateSupabaseSession(request: NextRequest) {
     }
   );
 
-  void supabase.auth.getUser();
+  await supabase.auth.getUser();
 
   return response;
 }
