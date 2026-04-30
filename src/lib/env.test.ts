@@ -35,6 +35,25 @@ describe('env helpers', () => {
     expect(env.FERNFLOW_WORKSPACE_SLUG).toBe('fernflow');
   });
 
+  it('treats blank optional server env values as unset', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.NEXT_PUBLIC_SITE_URL = '   ';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+    process.env.FERNFLOW_WORKSPACE_NAME = '   ';
+    process.env.FERNFLOW_WORKSPACE_SLUG = '';
+    process.env.FERNFLOW_OWNER_EMAIL = ' ';
+
+    const { getServerEnv } = await import('@/lib/env');
+    const env = getServerEnv();
+
+    expect(env.NEXT_PUBLIC_SITE_URL).toBeUndefined();
+    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
+    expect(env.FERNFLOW_OWNER_EMAIL).toBeUndefined();
+    expect(env.FERNFLOW_WORKSPACE_NAME).toBe('FernFlow');
+    expect(env.FERNFLOW_WORKSPACE_SLUG).toBe('fernflow');
+  });
+
   it('throws when the public Supabase URL is invalid', async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'not-a-url';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';

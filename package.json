@@ -46,7 +46,7 @@
     "ci:validate": "npm run lint && npm run type-check && npm run test:unit && npm run build:ci",
     "db:start": "supabase db start",
     "db:validate": "supabase db reset --local --no-seed --yes && supabase db lint --local --fail-on error",
-    "db:migrate:staging": "node scripts/ci/push-supabase.mjs staging",
+    "db:migrate:nonprod": "node scripts/ci/push-supabase.mjs nonprod",
     "db:migrate:prod": "node scripts/ci/push-supabase.mjs production",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

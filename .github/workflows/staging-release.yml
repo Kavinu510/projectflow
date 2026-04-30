@@ -18,30 +18,30 @@ jobs:
     name: Validate Main
     uses: ./.github/workflows/reusable-validate.yml
     secrets:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NONPROD_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NONPROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NONPROD_SUPABASE_SERVICE_ROLE_KEY }}
       FERNFLOW_WORKSPACE_SLUG: ${{ secrets.STAGING_FERNFLOW_WORKSPACE_SLUG }}
       FERNFLOW_WORKSPACE_NAME: ${{ secrets.STAGING_FERNFLOW_WORKSPACE_NAME }}
       FERNFLOW_OWNER_EMAIL: ${{ secrets.STAGING_FERNFLOW_OWNER_EMAIL }}
 
   release-staging:
-    name: Migrate, Deploy, And Smoke Test Staging
+    name: Migrate Non-Prod, Deploy Staging, And Smoke Test
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NONPROD_NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NONPROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       NEXT_PUBLIC_SITE_URL: ${{ secrets.STAGING_NEXT_PUBLIC_SITE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NONPROD_SUPABASE_SERVICE_ROLE_KEY }}
       FERNFLOW_WORKSPACE_SLUG: ${{ secrets.STAGING_FERNFLOW_WORKSPACE_SLUG }}
       FERNFLOW_WORKSPACE_NAME: ${{ secrets.STAGING_FERNFLOW_WORKSPACE_NAME }}
       FERNFLOW_OWNER_EMAIL: ${{ secrets.STAGING_FERNFLOW_OWNER_EMAIL }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.STAGING_SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.NONPROD_SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.NONPROD_SUPABASE_DB_PASSWORD }}
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.STAGING_NETLIFY_SITE_ID }}
       CI_SMOKE_ENABLED: 'true'
@@ -68,8 +68,8 @@ jobs:
       - name: Validate staging environment variables
         run: node scripts/ci/assert-required-env.mjs build supabase netlify privateSmoke
 
-      - name: Apply staging migrations
-        run: npm run db:migrate:staging
+      - name: Apply non-prod migrations
+        run: npm run db:migrate:nonprod
 
       - name: Deploy staging to Netlify
         id: deploy
