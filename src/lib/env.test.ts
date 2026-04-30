@@ -1,10 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ORIGINAL_ENV = { ...process.env };
+const ENV_KEYS_UNDER_TEST = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SITE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'FERNFLOW_WORKSPACE_NAME',
+  'FERNFLOW_WORKSPACE_SLUG',
+  'FERNFLOW_OWNER_EMAIL',
+] as const;
 
 function resetEnv() {
   process.env = { ...ORIGINAL_ENV };
 }
+
+function clearEnvUnderTest() {
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    delete process.env[key];
+  }
+}
+
+beforeEach(() => {
+  resetEnv();
+  clearEnvUnderTest();
+  vi.resetModules();
+});
 
 afterEach(() => {
   resetEnv();
