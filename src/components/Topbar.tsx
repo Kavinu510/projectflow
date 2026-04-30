@@ -9,7 +9,6 @@ interface TopbarProps {
   title: string;
   subtitle: string;
   currentUser: AppShellUser;
-  isAdmin: boolean;
   unreadCount: number;
   darkMode: boolean;
   onOpenNotifications: () => void;
@@ -21,7 +20,6 @@ export default function Topbar({
   title,
   subtitle,
   currentUser,
-  isAdmin,
   unreadCount,
   darkMode,
   onOpenNotifications,
@@ -94,7 +92,7 @@ export default function Topbar({
           )}
         </button>
 
-        <UserMenu currentUser={currentUser} isAdmin={isAdmin} />
+        <UserMenu currentUser={currentUser} />
       </div>
     </header>
   );

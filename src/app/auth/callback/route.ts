@@ -1,12 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
+import { buildAuthCompleteUrl, getSafeRedirectPath } from '@/lib/auth/redirect';
 import { getPublicEnv } from '@/lib/env';
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const next = url.searchParams.get('next') ?? '/dashboard-overview';
-  const redirectResponse = NextResponse.redirect(new URL(next, url.origin));
+  const next = getSafeRedirectPath(url.searchParams.get('next'));
+  const redirectResponse = NextResponse.redirect(buildAuthCompleteUrl(url.origin, next));
 
   if (!code) {
     return redirectResponse;

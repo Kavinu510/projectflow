@@ -196,8 +196,11 @@ export interface ProfilePageData {
 }
 
 export interface SettingsPageData {
+  profile: UserProfile;
+  userSettings: UserSettings;
   workspace: Workspace;
   workspaceSettings: WorkspaceSettings;
+  isAdmin: boolean;
 }
 
 export interface AppShellUser {

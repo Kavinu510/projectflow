@@ -115,7 +115,6 @@ export default function AppLayout({
         mobileOpen={mobileSidebarOpen}
         currentPath={currentPath}
         currentUser={shell.currentUser}
-        isAdmin={shell.currentUser.role === 'owner' || shell.currentUser.role === 'admin'}
         onToggleCollapse={() => setSidebarCollapsed((previous) => !previous)}
         onCloseMobile={() => setMobileSidebarOpen(false)}
       />
@@ -125,7 +124,6 @@ export default function AppLayout({
           title={pageTitle}
           subtitle={pageSubtitle}
           currentUser={shell.currentUser}
-          isAdmin={shell.currentUser.role === 'owner' || shell.currentUser.role === 'admin'}
           unreadCount={unreadCount}
           darkMode={darkMode}
           onOpenNotifications={() => void openNotifications()}
