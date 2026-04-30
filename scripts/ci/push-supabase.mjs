@@ -31,4 +31,4 @@ console.log(`Linking FernFlow to the ${target} Supabase project...`);
 run(['link', '--project-ref', process.env.SUPABASE_PROJECT_ID]);
 
 console.log(`Pushing migrations to the ${target} Supabase project...`);
-run(['db', 'push', '--linked']);
+run(['db', 'push', '--linked', '--yes']);
