@@ -4,6 +4,15 @@ function assert(condition, message) {
   }
 }
 
+function normalizeSmokeToken(value) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.replace(/[\r\n]+/g, '').trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 const baseUrl = process.env.SMOKE_BASE_URL;
 
 if (!baseUrl) {
@@ -51,7 +60,9 @@ async function checkRootRedirect() {
 }
 
 async function runProtectedSmoke() {
-  if (!process.env.CI_SMOKE_TOKEN) {
+  const smokeToken = normalizeSmokeToken(process.env.CI_SMOKE_TOKEN);
+
+  if (!smokeToken) {
     console.log('Skipping protected smoke route because CI_SMOKE_TOKEN is not configured.');
     return;
   }
@@ -60,7 +71,7 @@ async function runProtectedSmoke() {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-ci-smoke-token': process.env.CI_SMOKE_TOKEN,
+      'x-ci-smoke-token': smokeToken,
     },
   });
 

@@ -42,6 +42,15 @@ type NotificationRow = {
   title: string;
 };
 
+function normalizeSmokeToken(value: string | null | undefined) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.replace(/[\r\n]+/g, '').trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function unauthorized(message: string, status = 401) {
   return NextResponse.json({ ok: false, error: message }, { status });
 }
@@ -110,8 +119,8 @@ export async function POST(request: Request) {
     return unauthorized('Protected smoke checks are disabled.', 404);
   }
 
-  const providedToken = request.headers.get('x-ci-smoke-token');
-  const expectedToken = process.env.CI_SMOKE_TOKEN;
+  const providedToken = normalizeSmokeToken(request.headers.get('x-ci-smoke-token'));
+  const expectedToken = normalizeSmokeToken(process.env.CI_SMOKE_TOKEN);
 
   if (!expectedToken) {
     return unauthorized('CI_SMOKE_TOKEN is not configured for this environment.', 500);

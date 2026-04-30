@@ -1,10 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ORIGINAL_ENV = { ...process.env };
+const ENV_KEYS_UNDER_TEST = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SITE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'FERNFLOW_WORKSPACE_NAME',
+  'FERNFLOW_WORKSPACE_SLUG',
+  'FERNFLOW_OWNER_EMAIL',
+] as const;
 
 function resetEnv() {
   process.env = { ...ORIGINAL_ENV };
 }
+
+function clearEnvUnderTest() {
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    delete process.env[key];
+  }
+}
+
+beforeEach(() => {
+  resetEnv();
+  clearEnvUnderTest();
+  vi.resetModules();
+});
 
 afterEach(() => {
   resetEnv();
@@ -31,6 +52,25 @@ describe('env helpers', () => {
     const { getServerEnv } = await import('@/lib/env');
     const env = getServerEnv();
 
+    expect(env.FERNFLOW_WORKSPACE_NAME).toBe('FernFlow');
+    expect(env.FERNFLOW_WORKSPACE_SLUG).toBe('fernflow');
+  });
+
+  it('treats blank optional server env values as unset', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.NEXT_PUBLIC_SITE_URL = '   ';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+    process.env.FERNFLOW_WORKSPACE_NAME = '   ';
+    process.env.FERNFLOW_WORKSPACE_SLUG = '';
+    process.env.FERNFLOW_OWNER_EMAIL = ' ';
+
+    const { getServerEnv } = await import('@/lib/env');
+    const env = getServerEnv();
+
+    expect(env.NEXT_PUBLIC_SITE_URL).toBeUndefined();
+    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
+    expect(env.FERNFLOW_OWNER_EMAIL).toBeUndefined();
     expect(env.FERNFLOW_WORKSPACE_NAME).toBe('FernFlow');
     expect(env.FERNFLOW_WORKSPACE_SLUG).toBe('fernflow');
   });

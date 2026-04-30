@@ -16,6 +16,15 @@ const serverEnvSchema = publicEnvSchema.extend({
 let publicEnvCache: z.infer<typeof publicEnvSchema> | null = null;
 let serverEnvCache: z.infer<typeof serverEnvSchema> | null = null;
 
+function emptyToUndefined(value: string | undefined) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export function hasSupabaseEnv() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
@@ -25,7 +34,7 @@ export function getPublicEnv() {
     publicEnvCache = publicEnvSchema.parse({
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+      NEXT_PUBLIC_SITE_URL: emptyToUndefined(process.env.NEXT_PUBLIC_SITE_URL),
     });
   }
 
@@ -37,11 +46,11 @@ export function getServerEnv() {
     serverEnvCache = serverEnvSchema.parse({
       NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      FERNFLOW_WORKSPACE_NAME: process.env.FERNFLOW_WORKSPACE_NAME,
-      FERNFLOW_WORKSPACE_SLUG: process.env.FERNFLOW_WORKSPACE_SLUG,
-      FERNFLOW_OWNER_EMAIL: process.env.FERNFLOW_OWNER_EMAIL,
+      NEXT_PUBLIC_SITE_URL: emptyToUndefined(process.env.NEXT_PUBLIC_SITE_URL),
+      SUPABASE_SERVICE_ROLE_KEY: emptyToUndefined(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      FERNFLOW_WORKSPACE_NAME: emptyToUndefined(process.env.FERNFLOW_WORKSPACE_NAME),
+      FERNFLOW_WORKSPACE_SLUG: emptyToUndefined(process.env.FERNFLOW_WORKSPACE_SLUG),
+      FERNFLOW_OWNER_EMAIL: emptyToUndefined(process.env.FERNFLOW_OWNER_EMAIL),
     });
   }
 
