@@ -51,7 +51,7 @@ jobs:
       FERNFLOW_OWNER_EMAIL: ${{ secrets.FERNFLOW_OWNER_EMAIL }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.git_ref || github.sha }}
 
@@ -83,7 +83,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.git_ref || github.sha }}
 
