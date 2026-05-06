@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getTeamPageData } from '@/lib/server/data';
-import { handleRouteError } from '@/lib/server/api';
+import { getWorkspaceIdFromRequest, handleRouteError } from '@/lib/server/api';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const data = await getTeamPageData();
+    const workspaceId = getWorkspaceIdFromRequest(request);
+    const data = await getTeamPageData(workspaceId ?? undefined);
     return NextResponse.json(data);
   } catch (error) {
     return handleRouteError(error);

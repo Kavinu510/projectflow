@@ -62,8 +62,8 @@ function readMetadata(value: unknown) {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
 
-async function requireAppContext() {
-  const context = await getAppContext();
+async function requireAppContext(workspaceId?: string) {
+  const context = await getAppContext(workspaceId);
 
   if (!context) {
     throw new Error('Authentication required.');
@@ -371,13 +371,13 @@ async function notificationExists(
     .eq('user_id', userId)
     .eq('type', type)
     .eq('link', link)
-    .maybeSingle();
+    .limit(1);
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return Boolean(data);
+  return (data?.length ?? 0) > 0;
 }
 
 async function ensureTaskReminderNotifications(context: AppContext) {
@@ -528,24 +528,24 @@ async function syncMemberProjects(workspaceId: string, userId: string, projectId
   }
 }
 
-export async function getProjectsPageData() {
-  const context = await requireAppContext();
+export async function getProjectsPageData(workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const { projects, tasks } = await fetchProjectsTasksAndMembers(context);
   const { members } = await fetchWorkspacePeople(context);
 
   return { shell: context, projects, tasks, members };
 }
 
-export async function getTasksPageData() {
-  const context = await requireAppContext();
+export async function getTasksPageData(workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const { projects, tasks } = await fetchProjectsTasksAndMembers(context);
   const { members } = await fetchWorkspacePeople(context);
 
   return { shell: context, projects, tasks, members };
 }
 
-export async function getDashboardPageData(): Promise<DashboardPayload> {
-  const context = await requireAppContext();
+export async function getDashboardPageData(workspaceId?: string): Promise<DashboardPayload> {
+  const context = await requireAppContext(workspaceId);
   const { projects, tasks } = await fetchProjectsTasksAndMembers(context);
   const { members } = await fetchWorkspacePeople(context);
   const activity = await fetchActivityLogs(context.workspace.id, 8);
@@ -610,8 +610,8 @@ export async function getDashboardPageData(): Promise<DashboardPayload> {
   };
 }
 
-export async function getTeamPageData(): Promise<TeamPageData> {
-  const context = await requireAppContext();
+export async function getTeamPageData(workspaceId?: string): Promise<TeamPageData> {
+  const context = await requireAppContext(workspaceId);
   const { projects, tasks } = await fetchProjectsTasksAndMembers(context);
   const { members } = await fetchWorkspacePeople(context);
   const activity = await fetchActivityLogs(context.workspace.id, 12);
@@ -656,8 +656,8 @@ export async function getTeamPageData(): Promise<TeamPageData> {
   };
 }
 
-export async function getProfilePageData(): Promise<ProfilePageData> {
-  const context = await requireAppContext();
+export async function getProfilePageData(workspaceId?: string): Promise<ProfilePageData> {
+  const context = await requireAppContext(workspaceId);
   const { tasks } = await fetchProjectsTasksAndMembers(context);
   const recentActivity = await fetchActivityLogs(context.workspace.id, 12);
 
@@ -669,8 +669,8 @@ export async function getProfilePageData(): Promise<ProfilePageData> {
   };
 }
 
-export async function getSettingsPageData(): Promise<SettingsPageData> {
-  const context = await requireAppContext();
+export async function getSettingsPageData(workspaceId?: string): Promise<SettingsPageData> {
+  const context = await requireAppContext(workspaceId);
 
   return {
     profile: context.profile,
@@ -681,13 +681,13 @@ export async function getSettingsPageData(): Promise<SettingsPageData> {
   };
 }
 
-export async function getActivityData(limit = 20) {
-  const context = await requireAppContext();
+export async function getActivityData(limit = 20, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   return fetchActivityLogs(context.workspace.id, limit);
 }
 
-export async function getNotificationsData(unreadOnly = false) {
-  const context = await requireAppContext();
+export async function getNotificationsData(unreadOnly = false, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   await ensureTaskReminderNotifications(context);
 
   const admin = createSupabaseAdminClient();
@@ -711,8 +711,8 @@ export async function getNotificationsData(unreadOnly = false) {
   return (data ?? []).map((row) => mapNotification(row as RawRow));
 }
 
-export async function createProjectRecord(input: ProjectInput) {
-  const context = await requireAppContext();
+export async function createProjectRecord(input: ProjectInput, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data, error } = await admin
@@ -747,8 +747,12 @@ export async function createProjectRecord(input: ProjectInput) {
   return data;
 }
 
-export async function updateProjectRecord(projectId: string, input: ProjectInput) {
-  const context = await requireAppContext();
+export async function updateProjectRecord(
+  projectId: string,
+  input: ProjectInput,
+  workspaceId?: string
+) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data: existing, error: existingError } = await admin
@@ -797,8 +801,8 @@ export async function updateProjectRecord(projectId: string, input: ProjectInput
   return data;
 }
 
-export async function deleteProjectRecord(projectId: string) {
-  const context = await requireAppContext();
+export async function deleteProjectRecord(projectId: string, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data: existing, error: existingError } = await admin
@@ -830,8 +834,8 @@ export async function deleteProjectRecord(projectId: string) {
   });
 }
 
-export async function createTaskRecord(input: TaskInput) {
-  const context = await requireAppContext();
+export async function createTaskRecord(input: TaskInput, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data, error } = await admin
@@ -878,8 +882,8 @@ export async function createTaskRecord(input: TaskInput) {
   return data;
 }
 
-export async function updateTaskRecord(taskId: string, input: TaskInput) {
-  const context = await requireAppContext();
+export async function updateTaskRecord(taskId: string, input: TaskInput, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data: existing, error: existingError } = await admin
@@ -969,8 +973,8 @@ export async function updateTaskRecord(taskId: string, input: TaskInput) {
   return data;
 }
 
-export async function deleteTaskRecord(taskId: string) {
-  const context = await requireAppContext();
+export async function deleteTaskRecord(taskId: string, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { data: existing, error: existingError } = await admin
@@ -1002,8 +1006,8 @@ export async function deleteTaskRecord(taskId: string) {
   });
 }
 
-export async function inviteTeamMemberRecord(input: TeamInviteInput) {
-  const context = await requireAppContext();
+export async function inviteTeamMemberRecord(input: TeamInviteInput, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   assertAdmin(context);
 
   const admin = createSupabaseAdminClient();
@@ -1086,8 +1090,12 @@ export async function inviteTeamMemberRecord(input: TeamInviteInput) {
   });
 }
 
-export async function updateTeamMemberRecord(memberId: string, input: TeamMemberUpdateInput) {
-  const context = await requireAppContext();
+export async function updateTeamMemberRecord(
+  memberId: string,
+  input: TeamMemberUpdateInput,
+  workspaceId?: string
+) {
+  const context = await requireAppContext(workspaceId);
   assertAdmin(context);
 
   const admin = createSupabaseAdminClient();
@@ -1148,8 +1156,8 @@ export async function updateTeamMemberRecord(memberId: string, input: TeamMember
   }
 }
 
-export async function updateProfileRecord(input: ProfileUpdateInput) {
-  const context = await requireAppContext();
+export async function updateProfileRecord(input: ProfileUpdateInput, workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { error: profileError } = await admin
@@ -1191,8 +1199,11 @@ export async function updateProfileRecord(input: ProfileUpdateInput) {
   });
 }
 
-export async function updateWorkspaceSettingsRecord(input: WorkspaceSettingsInput) {
-  const context = await requireAppContext();
+export async function updateWorkspaceSettingsRecord(
+  input: WorkspaceSettingsInput,
+  workspaceId?: string
+) {
+  const context = await requireAppContext(workspaceId);
   assertAdmin(context);
 
   const admin = createSupabaseAdminClient();
@@ -1234,8 +1245,12 @@ export async function updateWorkspaceSettingsRecord(input: WorkspaceSettingsInpu
   });
 }
 
-export async function markNotificationRead(notificationId: string, isRead: boolean) {
-  const context = await requireAppContext();
+export async function markNotificationRead(
+  notificationId: string,
+  isRead: boolean,
+  workspaceId?: string
+) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { error } = await admin
@@ -1253,8 +1268,8 @@ export async function markNotificationRead(notificationId: string, isRead: boole
   }
 }
 
-export async function markAllNotificationsRead() {
-  const context = await requireAppContext();
+export async function markAllNotificationsRead(workspaceId?: string) {
+  const context = await requireAppContext(workspaceId);
   const admin = createSupabaseAdminClient();
 
   const { error } = await admin

@@ -218,6 +218,7 @@ export interface AppShellUser {
 export interface AppShellData {
   currentUser: AppShellUser;
   workspace: Workspace;
+  availableWorkspaces: Workspace[];
   unreadNotifications: number;
   recentNotifications: Notification[];
   darkModeDefault: ThemeMode;

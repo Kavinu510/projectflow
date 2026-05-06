@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import NotificationDrawer from '@/components/NotificationDrawer';
@@ -42,16 +42,25 @@ export default function AppLayout({
     setDarkMode(shouldUseDark);
   }, [shell.darkModeDefault]);
 
+  const refreshNotifications = useCallback(async () => {
+    const response = await fetch(`/api/notifications?workspaceId=${shell.workspace.id}`, {
+      cache: 'no-store',
+    });
+    const data = (await response.json()) as { notifications: Notification[] };
+    setNotifications(data.notifications);
+    setUnreadCount(data.notifications.filter((notification) => !notification.isRead).length);
+  }, [shell.workspace.id]);
+
   useEffect(() => {
     const channel = supabase
-      .channel(`notifications:${shell.currentUser.id}`)
+      .channel(`notifications:${shell.currentUser.id}:${shell.workspace.id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${shell.currentUser.id}`,
+          filter: `user_id=eq.${shell.currentUser.id},workspace_id=eq.${shell.workspace.id}`,
         },
         () => {
           void refreshNotifications();
@@ -62,14 +71,7 @@ export default function AppLayout({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [shell.currentUser.id, supabase]);
-
-  const refreshNotifications = async () => {
-    const response = await fetch('/api/notifications', { cache: 'no-store' });
-    const data = (await response.json()) as { notifications: Notification[] };
-    setNotifications(data.notifications);
-    setUnreadCount(data.notifications.filter((notification) => !notification.isRead).length);
-  };
+  }, [refreshNotifications, shell.currentUser.id, shell.workspace.id, supabase]);
 
   const handleToggleDark = () => {
     setDarkMode((previous) => {
@@ -81,7 +83,7 @@ export default function AppLayout({
   };
 
   const handleMarkNotification = async (notificationId: string, isRead: boolean) => {
-    await fetch(`/api/notifications/${notificationId}`, {
+    await fetch(`/api/notifications/${notificationId}?workspaceId=${shell.workspace.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isRead }),
@@ -90,7 +92,7 @@ export default function AppLayout({
   };
 
   const handleMarkAllNotifications = async () => {
-    await fetch('/api/notifications/mark-all-read', {
+    await fetch(`/api/notifications/mark-all-read?workspaceId=${shell.workspace.id}`, {
       method: 'POST',
     });
     await refreshNotifications();

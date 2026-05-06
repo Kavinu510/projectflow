@@ -2,6 +2,7 @@ import { type User } from '@supabase/supabase-js';
 import { getServerEnv } from '@/lib/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { resolveWorkspaceIdFromRuntimeContext } from '@/lib/server/workspace-context';
 import { avatarColorForString, getInitials, slugify } from '@/lib/utils';
 import {
   BUSINESS_DAY_OPTIONS,
@@ -148,6 +149,7 @@ export interface AppContext {
   profile: UserProfile;
   userSettings: UserSettings;
   workspace: Workspace;
+  availableWorkspaces: Workspace[];
   workspaceMember: WorkspaceMember;
   workspaceSettings: WorkspaceSettings;
   isAdmin: boolean;
@@ -186,6 +188,80 @@ async function ensureWorkspace(admin: ReturnType<typeof createSupabaseAdminClien
   }
 
   return createdWorkspace as RawRow;
+}
+
+async function getUserWorkspaceMembership(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+  workspaceId: string
+) {
+  const { data, error } = await admin
+    .from('workspace_members')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as RawRow | null;
+}
+
+async function getUserWorkspaceMemberships(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string
+) {
+  const { data, error } = await admin
+    .from('workspace_members')
+    .select('*')
+    .eq('user_id', userId)
+    .order('joined_at', { ascending: true, nullsFirst: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as RawRow[];
+}
+
+async function getWorkspaceById(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  workspaceId: string
+) {
+  const { data, error } = await admin
+    .from('workspaces')
+    .select('*')
+    .eq('id', workspaceId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data as RawRow | null;
+}
+
+async function getWorkspacesByIds(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  workspaceIds: string[]
+) {
+  if (workspaceIds.length === 0) {
+    return [] as RawRow[];
+  }
+
+  const { data, error } = await admin
+    .from('workspaces')
+    .select('*')
+    .in('id', workspaceIds)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as RawRow[];
 }
 
 async function ensureWorkspaceSettings(
@@ -368,7 +444,7 @@ export async function getCurrentAuthUser() {
   return user;
 }
 
-export async function getAppContext(): Promise<AppContext | null> {
+export async function getAppContext(requestedWorkspaceId?: string): Promise<AppContext | null> {
   try {
     const authUser = await getCurrentAuthUser();
 
@@ -377,19 +453,49 @@ export async function getAppContext(): Promise<AppContext | null> {
     }
 
     const admin = createSupabaseAdminClient();
-    const workspaceRow = await ensureWorkspace(admin);
-    const workspaceSettingsRow = await ensureWorkspaceSettings(admin, readString(workspaceRow.id));
     const profileRow = await ensureProfile(admin, authUser);
+    const defaultWorkspaceRow = await ensureWorkspace(admin);
+    const defaultWorkspaceId = readString(defaultWorkspaceRow.id);
+    await ensureWorkspaceMembership(admin, authUser, defaultWorkspaceId);
+
+    const runtimeWorkspaceId =
+      requestedWorkspaceId ?? (await resolveWorkspaceIdFromRuntimeContext());
+    const memberships = await getUserWorkspaceMemberships(admin, authUser.id);
+
+    let selectedMembership: RawRow | null = null;
+    if (runtimeWorkspaceId) {
+      selectedMembership = await getUserWorkspaceMembership(admin, authUser.id, runtimeWorkspaceId);
+    }
+
+    if (!selectedMembership) {
+      selectedMembership =
+        memberships.find((membership) => readString(membership.status, 'active') === 'active') ??
+        memberships[0] ??
+        null;
+    }
+
+    if (!selectedMembership) {
+      return null;
+    }
+
+    const selectedWorkspaceId = readString(selectedMembership.workspace_id, defaultWorkspaceId);
+    const workspaceIds = memberships
+      .map((membership) => readString(membership.workspace_id))
+      .filter(Boolean);
+    const workspaceRows = await getWorkspacesByIds(admin, workspaceIds);
+    const availableWorkspaces = workspaceRows.map((workspaceRow) => mapWorkspace(workspaceRow));
+    const workspaceRow = await getWorkspaceById(admin, selectedWorkspaceId);
+
+    if (!workspaceRow) {
+      return null;
+    }
+
+    const workspaceSettingsRow = await ensureWorkspaceSettings(admin, selectedWorkspaceId);
     const userSettingsRow = await ensureUserSettings(
       admin,
       authUser.id,
-      readString(workspaceRow.id),
+      selectedWorkspaceId,
       profileRow
-    );
-    const membershipRow = await ensureWorkspaceMembership(
-      admin,
-      authUser,
-      readString(workspaceRow.id)
     );
 
     const workspace = mapWorkspace(workspaceRow, workspaceSettingsRow);
@@ -397,13 +503,13 @@ export async function getAppContext(): Promise<AppContext | null> {
     const userSettings = mapUserSettings(userSettingsRow, workspace.id);
     const profile = mapProfile(profileRow, userSettings);
     const workspaceMember: WorkspaceMember = {
-      id: readString(membershipRow.id),
+      id: readString(selectedMembership.id),
       workspaceId: workspace.id,
       userId: authUser.id,
-      role: readString(membershipRow.role, 'member') as WorkspaceRole,
-      status: readString(membershipRow.status, 'active') as WorkspaceMember['status'],
-      joinedAt: readNullableString(membershipRow.joined_at),
-      invitedAt: readNullableString(membershipRow.invited_at),
+      role: readString(selectedMembership.role, 'member') as WorkspaceRole,
+      status: readString(selectedMembership.status, 'active') as WorkspaceMember['status'],
+      joinedAt: readNullableString(selectedMembership.joined_at),
+      invitedAt: readNullableString(selectedMembership.invited_at),
       profile,
     };
 
@@ -412,6 +518,7 @@ export async function getAppContext(): Promise<AppContext | null> {
       profile,
       userSettings,
       workspace,
+      availableWorkspaces,
       workspaceMember,
       workspaceSettings,
       isAdmin: workspaceMember.role === 'owner' || workspaceMember.role === 'admin',
@@ -461,6 +568,7 @@ export async function getAppShellData(): Promise<AppShellData | null> {
   return {
     currentUser,
     workspace: context.workspace,
+    availableWorkspaces: context.availableWorkspaces,
     unreadNotifications: recentNotifications.filter((notification) => !notification.isRead).length,
     recentNotifications,
     darkModeDefault: context.userSettings.theme,
