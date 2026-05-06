@@ -9,18 +9,30 @@ type AuthCompleteClientProps = {
 
 export default function AuthCompleteClient({ nextPath }: AuthCompleteClientProps) {
   const [isVerifying, setIsVerifying] = useState(true);
-  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let cancelled = false;
+
+    const getSessionWithTimeout = async () => {
+      const timeoutMs = 8000;
+      return Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timed out')), timeoutMs)
+        ),
+      ]);
+    };
+
     const verifySession = async () => {
       try {
-        // Wait a moment for session to be established
+        // Give the auth callback cookie handoff a moment to settle in the browser.
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession();
+        } = await getSessionWithTimeout();
 
         if (error) {
           console.error('Session verification error:', error);
@@ -33,14 +45,17 @@ export default function AuthCompleteClient({ nextPath }: AuthCompleteClientProps
           return;
         }
 
+        if (cancelled) {
+          return;
+        }
+
         setIsVerifying(false);
 
-        // Redirect to next path
-        const timeout = setTimeout(() => {
+        const timeout = window.setTimeout(() => {
           window.location.replace(nextPath);
         }, 200);
 
-        return () => clearTimeout(timeout);
+        return () => window.clearTimeout(timeout);
       } catch (error) {
         console.error('Auth completion error:', error);
         window.location.replace('/login?error=auth-completion-failed');
@@ -48,7 +63,11 @@ export default function AuthCompleteClient({ nextPath }: AuthCompleteClientProps
     };
 
     verifySession();
-  }, [nextPath, supabase]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nextPath]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-900 dark:bg-slate-950 dark:text-white">

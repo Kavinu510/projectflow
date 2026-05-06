@@ -7,6 +7,16 @@ export async function updateSupabaseSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  const { pathname } = request.nextUrl;
+  const isAuthRoute =
+    pathname.startsWith('/auth/callback') || pathname.startsWith('/auth/complete');
+  const isPublicRoute = pathname === '/login';
+  const isAssetRoute = pathname.startsWith('/_next') || pathname.startsWith('/favicon.ico');
+
+  if (isAuthRoute || isPublicRoute || isAssetRoute) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -28,19 +38,11 @@ export async function updateSupabaseSession(request: NextRequest) {
     }
   );
 
-  // Refresh session and handle potential errors
+  // Keep middleware checks minimal to avoid auth-route/session verification loops.
   try {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
+    const { error } = await supabase.auth.getSession();
     if (error) {
       console.error('Middleware session error:', error);
-    }
-
-    // Always refresh user data to ensure session is valid
-    if (session) {
-      await supabase.auth.getUser();
     }
   } catch (error) {
     console.error('Middleware auth error:', error);
