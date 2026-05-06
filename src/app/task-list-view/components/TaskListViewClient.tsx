@@ -295,30 +295,68 @@ export default function TaskListViewClient({
   };
 
   const handleKanbanMove = async (taskId: string, newStatus: TaskStatus) => {
-    const currentTask = tasks.find((t) => t.id === taskId);
-    if (!currentTask) return;
+    let previousStatus: TaskStatus | null = null;
+    let requestPayload: Partial<Task> | null = null;
 
-    const prevTasks = [...tasks];
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== taskId) {
+          return t;
+        }
+
+        if (t.status === newStatus) {
+          return t;
+        }
+
+        previousStatus = t.status;
+        requestPayload = {
+          title: t.title,
+          description: t.description,
+          projectId: t.projectId,
+          assigneeId: t.assigneeId,
+          priority: t.priority,
+          dueDate: t.dueDate,
+          status: newStatus,
+        };
+
+        return { ...t, status: newStatus };
+      })
+    );
+
+    if (!requestPayload || !previousStatus) {
+      return;
+    }
+    const rollbackStatus: TaskStatus = previousStatus;
+    const nextVersion = (statusRequestVersionRef.current[taskId] ?? 0) + 1;
+    statusRequestVersionRef.current[taskId] = nextVersion;
 
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: currentTask.title,
-          description: currentTask.description,
-          projectId: currentTask.projectId,
-          assigneeId: currentTask.assigneeId,
-          priority: currentTask.priority,
-          dueDate: currentTask.dueDate,
-          status: newStatus,
-        }),
+        body: JSON.stringify(requestPayload),
       });
-      if (!res.ok) throw new Error('Failed to update status');
-    } catch (_error) {
-      setTasks(prevTasks);
-      toast.error('Could not update status');
+      if (!res.ok) {
+        const error = (await res.json()) as { error?: string };
+        throw new Error(error.error ?? 'Failed to update status');
+      }
+
+      if (statusRequestVersionRef.current[taskId] !== nextVersion) {
+        return;
+      }
+    } catch (error) {
+      if (statusRequestVersionRef.current[taskId] !== nextVersion) {
+        return;
+      }
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId && t.status === newStatus ? { ...t, status: rollbackStatus } : t
+        )
+      );
+
+      const message = error instanceof Error ? error.message : 'Could not update status';
+      toast.error(message);
     }
   };
 
