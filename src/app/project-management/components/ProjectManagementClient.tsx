@@ -86,6 +86,36 @@ export default function ProjectManagementClient({
     ? tasks.filter((task) => task.projectId === selectedProject.id)
     : [];
 
+  interface ProjectRecordResponse {
+    id: string;
+    workspace_id: string;
+    title: string;
+    description: string;
+    status: ProjectStatus;
+    created_at: string;
+    due_date: string;
+    tags: string[] | null;
+    created_by: string | null;
+  }
+
+  function toProjectModel(record: ProjectRecordResponse, teamIds: string[]): Project {
+    return {
+      id: record.id,
+      workspaceId: record.workspace_id,
+      title: record.title,
+      description: record.description,
+      status: record.status,
+      progress: 0,
+      createdAt: record.created_at,
+      dueDate: record.due_date,
+      teamIds,
+      taskCount: 0,
+      completedTaskCount: 0,
+      tags: record.tags ?? [],
+      createdBy: record.created_by,
+    };
+  }
+
   const submitProject = async (payload: ProjectInput) => {
     const endpoint = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects';
     const method = editingProject ? 'PATCH' : 'POST';
@@ -98,10 +128,20 @@ export default function ProjectManagementClient({
 
     if (!response.ok) {
       const error = (await response.json()) as { error?: string };
-      throw new Error(error.error ?? 'Unable to save project.');
+      const message = error.error ?? 'Unable to save project.';
+      toast.error(message);
+      throw new Error(message);
     }
 
-    await refreshData();
+    const data = (await response.json()) as { project: ProjectRecordResponse };
+
+    if (editingProject) {
+      await refreshData();
+    } else {
+      const createdProject = toProjectModel(data.project, payload.teamIds);
+      setProjects((previous) => [...previous, createdProject]);
+    }
+
     toast.success(editingProject ? 'Project updated' : 'Project created');
     setFormOpen(false);
     setEditingProject(null);
@@ -274,7 +314,7 @@ export default function ProjectManagementClient({
           setFormOpen(false);
           setEditingProject(null);
         }}
-        onSubmit={(payload) => void submitProject(payload)}
+        onSubmit={submitProject}
         initialData={editingProject ?? undefined}
         users={users}
         mode={editingProject ? 'edit' : 'create'}
