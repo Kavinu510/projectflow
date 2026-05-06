@@ -28,7 +28,23 @@ export async function updateSupabaseSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  // Refresh session and handle potential errors
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+    if (error) {
+      console.error('Middleware session error:', error);
+    }
+
+    // Always refresh user data to ensure session is valid
+    if (session) {
+      await supabase.auth.getUser();
+    }
+  } catch (error) {
+    console.error('Middleware auth error:', error);
+  }
 
   return response;
 }

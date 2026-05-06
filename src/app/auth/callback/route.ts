@@ -38,5 +38,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=auth-callback-failed', url.origin));
   }
 
+  // Ensure session is properly set by getting user after exchange
+  await supabase.auth.getUser();
+
   return redirectResponse;
 }
