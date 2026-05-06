@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Eye, PlayCircle, PlusCircle, RefreshCw } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 import { type ActivityLog, type UserProfile } from '@/lib/types';
@@ -26,6 +26,27 @@ const actionLabels: Record<string, string> = {
   'updated status': 'updated',
   created: 'created',
 };
+
+function RelativeTime({ timestamp }: { timestamp: string }) {
+  const [relativeTime, setRelativeTime] = useState('');
+
+  useEffect(() => {
+    const update = () => {
+      setRelativeTime(formatRelativeTime(timestamp));
+    };
+
+    update();
+    const interval = window.setInterval(update, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, [timestamp]);
+
+  return (
+    <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+      {relativeTime}
+    </span>
+  );
+}
 
 export default function ActivityFeed({
   activity,
@@ -78,9 +99,7 @@ export default function ActivityFeed({
                   <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
                     {icon}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatRelativeTime(event.createdAt)}
-                  </span>
+                  <RelativeTime timestamp={event.createdAt} />
                 </div>
               </div>
             </div>
