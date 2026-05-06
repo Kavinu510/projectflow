@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import React from 'react';
 import {
+  Bell,
   ChevronLeft,
   ChevronRight,
   FolderKanban,
@@ -33,6 +34,7 @@ const navItems = [
 
 const bottomNavItems = [
   { label: 'Team', href: '/team', icon: <Users size={18} /> },
+  { label: 'Notifications', href: '/notifications', icon: <Bell size={18} /> },
   { label: 'Settings', href: '/settings', icon: <Settings size={18} /> },
 ];
 
