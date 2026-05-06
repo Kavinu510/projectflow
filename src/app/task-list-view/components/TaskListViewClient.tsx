@@ -31,6 +31,21 @@ interface TaskListViewClientProps {
   users: WorkspaceUserOption[];
 }
 
+interface TaskRecordResponse {
+  id: string;
+  workspace_id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  assignee_id: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
 export default function TaskListViewClient({
   initialTasks,
   projects,
@@ -82,6 +97,23 @@ export default function TaskListViewClient({
     filters.priorities.length +
     filters.statuses.length;
 
+  function toTaskModel(record: TaskRecordResponse): Task {
+    return {
+      id: record.id,
+      workspaceId: record.workspace_id,
+      projectId: record.project_id,
+      title: record.title,
+      description: record.description,
+      assigneeId: record.assignee_id,
+      status: record.status,
+      priority: record.priority,
+      dueDate: record.due_date,
+      createdAt: record.created_at,
+      updatedAt: record.updated_at,
+      createdBy: record.created_by,
+    };
+  }
+
   const handleCreateTask = async (data: Partial<Task>) => {
     try {
       const res = await fetch('/api/tasks', {
@@ -90,19 +122,23 @@ export default function TaskListViewClient({
         body: JSON.stringify(data),
       });
 
-      if (!res.ok) throw new Error('Failed to create task');
-
-      // Refresh tasks
-      const freshRes = await fetch('/api/tasks');
-      if (freshRes.ok) {
-        const freshData = (await freshRes.json()) as { tasks?: Task[] };
-        setTasks(Array.isArray(freshData.tasks) ? freshData.tasks : []);
+      if (!res.ok) {
+        const error = (await res.json()) as { error?: string };
+        throw new Error(error.error ?? 'Failed to create task');
       }
+
+      const payload = (await res.json()) as { task: TaskRecordResponse };
+      const createdTask = toTaskModel(payload.task);
+      setTasks((previous) =>
+        [...previous, createdTask].sort((left, right) => left.dueDate.localeCompare(right.dueDate))
+      );
 
       setFormOpen(false);
       toast.success(`Task created`);
-    } catch (_error) {
-      toast.error('Could not create task');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not create task';
+      toast.error(message);
+      throw error;
     }
   };
 

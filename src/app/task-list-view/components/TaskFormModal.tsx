@@ -25,7 +25,7 @@ interface TaskFormData {
 interface TaskFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Task>) => void;
+  onSubmit: (data: Partial<Task>) => void | Promise<void>;
   initialData?: Task;
   projects: Project[];
   users: WorkspaceUserOption[];
@@ -83,7 +83,7 @@ export default function TaskFormModal({
   }, [open, initialData, reset, projects, users]);
 
   const processSubmit = async (data: TaskFormData) => {
-    onSubmit({ ...data, assigneeId: data.assigneeId || null });
+    await onSubmit({ ...data, assigneeId: data.assigneeId || null });
     reset();
   };
 
